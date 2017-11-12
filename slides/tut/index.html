@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Refined Types in Practice</title>
+    <meta charset="utf-8">
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif', 'Helvetica'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz', 'Gill Sans';
+        font-weight: normal;
+      }
+
+      .image-200 img {
+          width: 160px;
+          float: right;
+      }
+      .image-small-centered img {
+          width: 120px; align: center;
+      }
+
+      th, td {
+          padding-left: 10px;
+      }
+
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono', 'Consolas', 'Courier New'; }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# Refined Types In Practice
+## Peter Mortier
+## December 2017
+
+GitHub: [@kwark](https://github.com/kwark) /
+Twitter: [@kwarkk](https://twitter.com/kwarkk)
+
+---
+
+#About me .image-200[![Vlaanderen is wegen en verkeer](https://docs.wegenenverkeer.be/Huisstijl%20AWV/Vol%20logo/Vlaanderen_is_wegenenverkeer_vol.png)]
+
+
+Freelance Scala developer @ [Agentschap Wegen en Verkeer](http://wegenenverkeer.be/)
+
+Twenty years of JVM experience: wrote my first applet in 1996
+
+Did Javascript on the server (SSJS) before it was cool: Netscape Enterprise Server
+
+Used [Pizza language](https://en.wikipedia.org/wiki/Pizza_%28programming_language%29): a superset of Java with support for generics
+
+Interested in scala through [Functional Programming Principles in Scala](https://www.coursera.org/learn/progfun1) course
+
+---
+
+# Agenda
+
+* Stringly typed
+* Making illegal states unrepresentable
+* Smart constructors
+* Taking it to the type level
+* Validating input
+* Refined types in practice
+
+---
+
+# [Stringly typed](http://wiki.c2.com/?StringlyTyped)
+
+> *"A riff on strongly typed. Used to describe an implementation that needlessly relies on strings."*
+
+
+## What's the problem when using Strings?
+
+* A `String` can *represent* anything
+* A `String` can *contain* anything
+
+```tut:silent
+final case class Developer(name: String, twitterHandle: String)
+
+Developer("Peter", "@kwarkk") // ok
+
+Developer("@kwarkk", "Peter") // Oops, we've got a bug!
+```
+
+---
+# Type aliases to the rescue ?
+
+```tut:silent
+type Name = String
+type TwitterHandle = String
+
+final case class Developer(name: Name, twitterHandle: TwitterHandle)
+
+val name: Name = "Peter"
+val twitterHandle: TwitterHandle = "@kwarkk"
+
+Developer(name, twitterHandle) // ok
+
+Developer(twitterHandle, name) // Again, we've got a bug
+```
+---
+# Value classes to the rescue ?
+
+```tut:silent
+final class Name(val value: String) extends AnyVal
+final class Url (val value: String) extends AnyVal
+
+final case class Developer(name: Name, twitterHandle: TwitterHandle)
+```
+
+And now we finally can't switch arguments anymore !
+
+```tut:fail:silent
+// this does not compile, Yeah
+Developer(new TwitterHandle("@kwarkk"), new Name("Peter"))
+```
+
+But these value classes still contain any `String`:
+
+```tut:silent
+// Sigh, yet another bug!
+Developer(new Name("@kwarkk"), new TwitterHandle("Peter"))
+```
+
+???
+https://stackoverflow.com/questions/34561614/should-i-use-the-final-modifier-when-declaring-case-classes
+
+---
+# Add validation with smart constructors
+
+```tut:silent
+object smart {
+  final class TwitterHandle private(val value: String) extends AnyVal
+
+  object TwitterHandle {
+    def fromString(s: String): Option[TwitterHandle] = {
+      if (s.startsWith("@")) Some(new TwitterHandle(s))
+      else None
+    }
+  }
+
+  final class Name private(val value: String) extends AnyVal
+
+  object Name {
+    def fromString(s: String): Option[Name] = {
+       if (s.nonEmpty) Some(new Name(s)) else None
+    }
+  }
+
+  final case class Developer(name: Name, twitterHandle: TwitterHandle)
+
+
+}
+```
+
+???
+why not a case class
+
+---
+# Smart constructors are not perfect
+
+```tut:silent
+smart.Developer(
+    smart.Name.fromString("Peter Mortier").get,
+    smart.TwitterHandle.fromString("@kwarkk").get
+)
+```
+
+* Values are always wrapped in an Option
+
+* Even though sometimes we statically know these are valid values
+
+* Boilerplate validation logic
+
+---
+#Sidebar: why do we love `Option` so much?
+
+* It encodes at the typelevel that a value may be absent
+
+* It forces us to explicitly deal with absent value
+
+* No more `NullPointerException`s
+
+* Provides extra type safety
+
+* Would be great if we could achieve the same for f.e. non empty strings
+
+
+---
+#Idea: encode validations at the typelevel
+
+* This is the basic idea behind [refinement types](https://en.wikipedia.org/wiki/Refinement_%28computing#29#Refinement_types):
+
+> *"In type theory, a refinement type is a type endowed with a predicate which is assumed to hold for any element of the refined type."*
+
+* Luckily, there already exists a Scala [refined](https://github.com/fthomas/refined) library by Frank Thomas
+
+.image-small-centered[![Frank Thomas](https://avatars3.githubusercontent.com/u/141252?s=460&v=4)]
+
+???
+
+TODO add lightbulb
+
+---
+#Refined basics
+
+* refinement type =
+  <span style="color:#50fa7b">**base type**</span> +
+  <span style="color:#FFC000">**predicate**</span>
+
+* values of a refinement type = <span style="color:#50fa7b">all values of the base type</span> that
+  <span style="color:#FFC000">**satisfy the predicate**</span>
+
+<br/>
+
+Examples:
+
+* `TwitterHandle = String + (∀ s => s.startsWith("@"))`
+
+* `Name          = String + (∀ s => s.nonEmpty)`
+
+---
+#Refined example
+
+```tut:silent
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.collection.NonEmpty
+import eu.timepit.refined.string.StartsWith
+import eu.timepit.refined.W
+
+object refinements {
+    type Name = String Refined NonEmpty
+    type TwitterHandle = String Refined StartsWith[W.`"@"`.T]
+
+    final case class Developer(name: Name, twitterHandle: TwitterHandle)
+}
+```
+
+--
+Some predicates require lifting literals to the type-level
+
+We use [Shapeless Witness](https://github.com/milessabin/shapeless/wiki/Feature-overview:-shapeless-2.0.0#singleton-typed-literals) to achieve this
+
+```scala
+scala> val x: W.`"foo"`.T = "foo"
+x: String("foo") = foo
+```
+
+---
+# Literal based singleton types
+
+Soon this won't be necessary anymore:
+
+```scala
+scala> val x: "foo" = "foo"
+x: String = "foo"
+```
+
+You'll be able to just use:
+
+```scala
+type TwitterHandle = String Refined StartsWith["@"]
+```
+
+This is already available in:
+* [Dotty](http://dotty.epfl.ch/docs/reference/singleton-types.html)
+* [Typelevel scala (-Yliteral-types)](https://typelevel.org/scala/)
+* [scala 2.12.5 (hopefully)](https://github.com/scala/scala/pull/5310)
+
+---
+# Refining literal values at compile time
+
+Uses macro magic: `import eu.timepit.refined.auto._`
+
+```scala
+scala>"Peter Mortier": refinements.Name
+res0: refinements.Name = Peter Mortier
+```
+
+Invalid literals => compilation error
+
+```scala
+scala> "foo": refinements.TwitterHandle
+<console>:15: error: Predicate failed: "foo".startsWith("@").
+       "foo": refinements.TwitterHandle
+```
+
+---
+#Creating a Developer from literal values is now easier than ever!
+
+```tut:silent
+import eu.timepit.refined._
+import eu.timepit.refined.auto._
+
+refinements.Developer("Peter Mortier", "@kwarkk") // Hell yeah
+```
+--
+And swapping arguments fails to compile
+
+```tut:silent:fail
+refinements.Developer("@kwarkk", "Peter Mortier") // Does not compile, sweet
+```
+
+---
+# Manually refine if this is too much magic
+
+* Refine using the predicate:
+
+```tut:silent
+val name: refinements.Name = refineMV[NonEmpty]("Peter Mortier")
+```
+```tut:fail:silent
+val handle: refinements.TwitterHandle = refineMV[StartsWith[W.`"@"`.T]]("wrong")
+```
+--
+* Refine using the refined type:
+
+```tut:silent
+import eu.timepit.refined.api.RefType
+
+RefType.applyRefM[refinements.Name]("Peter Mortier")
+```
+
+```tut:silent:fail
+RefType.applyRefM[refinements.TwitterHandle]("wrong")
+```
+---
+# Refining runtime values
+
+Most of the time however we won't have literals available
+
+* Refine using the predicate:
+
+```tut:silent
+val result: Either[String, refinements.Name] = refineV[NonEmpty]("Peter Mortier")
+```
+--
+* Refine using the refined type:
+
+```tut:silent
+val result: Either[String, refinements.TwitterHandle] =
+        RefType.applyRef[refinements.TwitterHandle]("wrong")
+```
+---
+# Refinement recap
+
+Using **Predicate**
+
+|                |                  |
+| -------------  | ---------------                  |
+| compile time   | `eu.timepit.refined.refineMV[P]` |
+| runtime        | `eu.timepit.refined.refineV[P]`  |
+<br/>
+
+Using **Refined type**
+
+|                |       |
+| -------------  | ---------------                  |
+| compile time   | `eu.timepit.refined.api.RefType.applyRefM[RT]` |
+| runtime        | `eu.timepit.refined.api.RefType.applyRef[RT]`  |
+
+---
+class: center, middle
+# Predicates in refined
+
+---
+# Char predicates
+
+In package `eu.timepit.refined.char`
+
+|                |                                             |
+| -------------  | ---------------                             |
+| `Digit`        |  checks if a `Char` is a digit              |
+| `Letter`       |  checks if a `Char` is a letter             |
+| `LetterOrDigit`|  checks if a `Char` is a letter or digit    |
+| `LowerCase`    |  checks if a `Char` is a lower case character  |
+| `UpperCase`    |  checks if a `Char` is an upper case character |
+| `Whitespace`   |  checks if a `Char` is white space |
+
+---
+# Numeric predicates
+
+In package `eu.timepit.refined.numeric`
+
+|                             |                                                 |
+| -------------               | ---------------                                 |
+| `Less[N]`                   | checks if number is less than `N`                |
+| `LessEqual[N]`              | checks if number is less than or equal to `N`    |
+| `Greater[N]`                | checks if number is greater than `N`             |
+| `GreaterEqual[N]`           | checks if number is greater than or equal to `N` |
+| `Positive`                  | checks if number is greater than zero            |
+| `NonPositive`               | checks if number is zero or negative             |
+| `Negative`                  | checks if number is less than zero               |
+| `NonNegative`               | checks if number is zero or positive             |
+| `Odd`                       | checks if number is odd                          |
+| `Even`                      | checks if number is even                         |
+| `Modulo[N, O]`              | checks if number modulo `N` is `O`               |
+| `Divisible[N]`              | checks if number is divisible by `N`             |
+| `NonDivisible[N]`           | checks if number is NOT divisible by `N`         |
+
+---
+# Numeric interval predicates
+
+In package `eu.timepit.refined.numeric`
+
+|                             |                                                 |
+| -------------               | ---------------                                 |
+| `Interval.Open[L, H]`       | checks if number is in the interval (`L`, `H`)   |
+| `Interval.OpenClosed[L, H]` | checks if number is in the interval (`L`, `H`]   |
+| `Interval.ClosedOpen[L, H]` | checks if number is in the interval [`L`, `H`)   |
+| `Interval.Closed[L, H]`     | checks if number is in the interval [`L`, `H`]   |
+
+---
+# String predicates
+In package `eu.timepit.refined.string`
+
+|                     |                                                         |
+| -------------       | ---------------                                         |
+| `StartsWith[S]`     | checks if string starts with the prefix `S`         |
+| `EndsWith[S]`       | checks if string ends with the suffix `S`           |
+| `MatchesRegex[S]`   | checks if string matches the regular expression `S` |
+| `Regex`             | checks if string is a valid regular expression      |
+| `Uri`               | checks if string is a valid URI                     |
+| `Url`               | checks if string is a valid URL                     |
+| `Uuid`              | checks if string is a valid UUID                    |
+| `Xml`               | checks if string is valid XML                       |
+| `XPath`             | checks if string is a valid XPath expression        |
+
+---
+# Collection predicates
+In package `eu.timepit.refined.collection`
+
+|                     |                                                         |
+| -------------       | ---------------                                         |
+| `Empty`             | checks if a `Traversable` is empty                                                 |
+| `NonEmpty`          | checks if a `Traversable` is not empty                                             |
+| `Forall[P]`         | checks if the predicate `P` holds for all elements of a `Traversable`              |
+| `Exists[P]`         | checks if the predicate `P` holds for some elements of a `Traversable`             |
+| `Head[P]`           | checks if the predicate `P` holds for the first element of a `Traversable`         |
+| `Index[N, P]`       | checks if the predicate `P` holds for the element at index `N` of a sequence       |
+| `Init[P]`           | checks if the predicate `P` holds for all but the last element of a `Traversable`  |
+| `Last[P]`           | checks if the predicate `P` holds for the last element of a `Traversable`          |
+| `Tail[P]`           | checks if the predicate `P` holds for all but the first element of a `Traversable` |
+
+---
+# More Collection predicates
+In package `eu.timepit.refined.collection`
+
+|                     |                                                         |
+| -------------       | ---------------                                         |
+| `Size[P]`           | checks if the size of a `Traversable` satisfies the predicate `P`                  |
+| `Contains[U]`       | checks if a `Traversable` contains a value equal to `U`                            |
+| `Count[PA, PC]`     | counts the number of elements in a `Traversable` which satisfy the  predicate `PA` and passes the result to the predicate `PC`                                               |
+| `MinSize[N]`        | checks if the size of a `Traversable` is greater than or equal to `N`              |
+| `MaxSize[N]`        | checks if the size of a `Traversable` is less than or equal to `N`                 |
+
+---
+# Logical (Boolean) predicates
+In package `eu.timepit.refined.boolean`
+
+|              |                                                         |
+| ------------ | ---------------                                         |
+| `True`       | constant predicate that is always `true`                |
+| `False`      | constant predicate that is always `false`               |
+| `Not[P]`     | negation of the predicate `P`                           |
+| `And[A, B]`  | conjunction of the predicates `A` and `B`               |
+| `Or[A, B]`   | disjunction of the predicates `A` and `B`               |
+| `Xor[A, B]`  | exclusive disjunction of the predicates `A` and `B`     |
+| `Nand[A, B]` | negated conjunction of the predicates `A` and `B`       |
+| `Nor[A, B]`  | negated disjunction of the predicates `A` and `B`       |
+| `AllOf[PS]`  | conjunction of all predicates in `PS`                   |
+| `AnyOf[PS]`  | disjunction of all predicates in `PS`                   |
+| `OneOf[PS]`  | exclusive disjunction of all predicates in `PS`         |
+
+---
+# Combining predicates
+
+Simple predicates can be combined using the boolean predicates into a more complex predicate.
+
+For example the predicate for `TwitterHandle` is not precise enough.
+
+According to [Twitter's support page](https://support.twitter.com/articles/101299#error):
+
+* Usernames containing the words Twitter or Admin cannot be claimed.
+* Your username cannot be longer than 15 characters.
+* A username can only contain alphanumeric characters (letters A-Z, numbers 0-9) with the exception of underscores
+
+---
+# Improved `TwitterHandle`
+
+```tut:silent
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.boolean.{AllOf, Not, Or, And}
+import eu.timepit.refined.string.{MatchesRegex, StartsWith}
+import eu.timepit.refined.W
+import eu.timepit.refined.char.LetterOrDigit
+import eu.timepit.refined.collection.{MaxSize, Tail}
+import eu.timepit.refined.generic.Equal
+import shapeless.::
+import shapeless.HNil
+
+object improved {
+
+  type TwitterHandle = String Refined AllOf[
+    StartsWith[W.`"@"`.T] ::
+    MaxSize[W.`16`.T] ::
+    Not[MatchesRegex[W.`"(?i:.*twitter.*)"`.T]] ::
+    Not[MatchesRegex[W.`"(?i:.*admin.*)"`.T]] ::
+    Tail[Or[LetterOrDigit, Equal[W.`'_'`.T]]] ::
+    HNil
+  ]
+
+  type Name = String Refined And[NonEmpty, MaxSize[W.`256`.T]]
+
+}
+```
+
+???
+Use Shapeless HList to encode a list at the typelevel
+---
+# Storing/Retrieving refined values
+
+* We'll use Lightbend's Slick to retrieve/store Developers
+* We need to map our Developer from/to a DB table
+
+```tut:silent:fail
+object Schema {
+
+  import slick.jdbc.H2Profile.api._
+
+  class Developers(tag: Tag) extends Table[Developer](tag, "developers") {
+    def twitter = column[TwitterHandle]("twitter", O.PrimaryKey)
+    def name    = column[Name]("name")
+
+    def * = (twitter, name) <> (Developer.tupled, Developer.unapply)
+  }
+
+  val developers = TableQuery[Developers]
+
+}
+```
+???
+TODO: explain Tag
+    explain profile
+
+http://slick.lightbend.com/doc/3.2.1/concepts.html
+
+---
+# Standard mappings don't work
+
+```scala
+could not find implicit value for parameter tt:
+    slick.ast.TypedType[improved.TwitterHandle]
+    def twitter = column[TwitterHandle]("twitter", O.PrimaryKey)
+                                       ^
+could not find implicit value for parameter tt:
+    slick.ast.TypedType[improved.Name]
+    def name    = column[Name]("name")
+                              ^
+two errors found
+(core/compile:compile) Compilation failed
+```
+
+It looks like Slick does not know how to map our refined types from/to SQL types.
+---
+# Custom Slick mappings
+
+Let's fix that by writing some mappings
+
+* First try
+
+```scala
+import eu.timepit.refined.api.Refined
+import improved.TwitterHandle
+
+implicit val twitterMapping = MappedColumnType.base[TwitterHandle, String](
+  _.value, Refined.unsafeApply
+)
+```
+
+`Refined.unsafeApply` is an escape hatch!
+
+```scala
+implicit val twitterMapping = MappedColumnType.base[TwitterHandle, String](
+  _.value, v => RefType.applyRef[Name](v) match { 
+    case Right(rt) => rt
+    case Left(e)   => throw new SQLException(s"can not refine '$v'", e)
+  }
+)
+```
+
+This will protect you from DB rows, which don't pass the predicate
+---
+# Custom Slick mappings
+
+Now we can store refined values!
+
+```scala
+val db = Database.forURL("xxxx", driver = "org.h2.Driver")
+db.run(developers += developer)
+```
+
+But custom queries are still a problem!
+
+```scala
+db.run(developers.filter(_.twitter.like("%kwa%")).result)
+
+[error] value like is not a member of slick.lifted.Rep[improved.TwitterHandle]
+[error]     db.run(developers.filter(_.twitter.like("%kwa%")).result)
+```
+
+Sigh! We might just as well give-up and go back using unrefined types
+
+???
+A Database object encapsulates the resources that are required to connect to a specific database. This can be just a number of connection parameters but in most cases it includes a connection pool and a thread pool.
+
+TODO try:
+    .asInstanceOf[Rep[String]] => does this work
+    .map(_.value) => does not work
+
+---
+# Don't despair: help is here
+
+Integration library for Refined and Slick:
+
+
+```scala
+libraryDependencies += "be.venneborg" %% "slick-refined" % "0.0.1"
+```
+
+[slick-refined](https://github.com/kwark/slick-refined) provides:
+* mapping support for Refined types
+* extension methods to enable SQL operations on lifted `Rep[RefinedType]`
+* support for mapping results from plain SQL queries
+
+---
+#Refined Slick Profile
+
+```scala
+import slick.jdbc.H2Profile
+import be.venneborg.refined.{RefinedMapping, RefinedSupport}
+
+trait MyRefinedSlickProfile extends H2Profile
+  with RefinedMapping
+  with RefinedSupport {
+
+  override val api = new API with RefinedImplicits
+
+}
+
+object MyRefinedSlickProfile extends MyRefinedSlickProfile
+```
+???
+Even when using a standard interface for database drivers like JDBC there are many differences between databases in the SQL dialect they understand, the way they encode data types, or other idiosyncracies. Slick abstracts over these differences with profiles
+
+https://github.com/scala/bug/issues/10477
+
+---
+# Refined Schema
+```scala
+object RefinedSchema {
+
+  import MyRefinedSlickProfile.api._
+  import MyRefinedSlickProfile.mapping._
+
+  class Developers(tag: Tag) extends Table[Developer](tag, "developers") {
+    def twitter = column[TwitterHandle]("twitter", O.PrimaryKey)
+    def name    = column[Name]("name")
+
+    def * = (name, twitter) <> (Developer.tupled, Developer.unapply)
+  }
+
+  val developers = TableQuery[Developers]
+
+}
+```
+---
+# Storing and querying for refined types works out of the box
+
+Storing a developer in the DB
+```scala
+db.run(developers += developer)
+```
+
+Retrieving a developer from the DB using a slick query
+```scala
+db.run(developers.filter(_.twitter.like("%kwa%")).result)
+```
+---
+# Plain SQL query support
+
+> *As an alternative to Scala queries you can write queries and other database statements in SQL. This is done with string interpolators.*
+
+<br/>
+```scala
+import _root_.be.venneborg.refined.RefinedPlainSql._
+
+db.run(sql"""select name from developers where twitter like "%rk" """.as[Name])
+db.run(sqlu"""update developers set name = "Peter DM Mortier" where twitter like "@kwarkk" """) //TODO check if correct
+```
+---
+# Json serialization
+
+### Let's use Play Json
+
+```scala
+import play.api.libs.json.Json
+
+implicit val developerFormat = Json.format[Developer]
+
+Json.toJson(Developer("Peter Mortier", "@kwarkk"))
+```
+--
+```scala
+No instance of play.api.libs.json.Format is available
+    for eu.timepit.refined.api.Refined[java.lang.String,
+            eu.timepit.refined.boolean.And[eu.timepit.refined.boolean.Not[eu.timepit.refined.collection.Empty], eu.timepit.refined.collection.Size[eu.timepit.refined.boolean.Not[eu.timepit.refined.numeric.Greater[scala.Int]]]]],
+        eu.timepit.refined.api.Refined[java.lang.String,
+            eu.timepit.refined.boolean.AllOf[shapeless.$colon$colon[eu.timepit.refined.string.StartsWith[java.lang.String], shapeless.$colon$colon[eu.timepit.refined.collection.Size[eu.timepit.refined.boolean.Not[eu.timepit.refined.numeric.Greater[scala.Int]]], shapeless.$colon$colon[eu.timepit.refined.boolean.Not[eu.timepit.refined.string.MatchesRegex[java.lang.String]], shapeless.$colon$colon[eu.timepit.refined.boolean.Not[eu.timepit.refined.string.MatchesRegex[java.lang.String]], shapeless.$colon$colon[eu.timepit.refined.collection.Tail[eu.timepit.refined.boolean.Or[eu.timepit.refined.boolean.Or[eu.timepit.refined.char.Letter, eu.timepit.refined.char.Digit], eu.timepit.refined.generic.Equal[scala.Char]]], shapeless.HNil]]]]]]]
+in the implicit scope (Hint: if declared in the same file, make sure it's declared before)
+```
+---
+#Manual Json Format
+
+```tut:silent
+import play.api.libs.json._
+import improved_refinements._
+
+implicit val twitterHandleFormat = new Format[TwitterHandle] {
+
+  override def reads(json: JsValue) = json.validate[String] flatMap { s =>
+    RefType.applyRef[TwitterHandle](s) match {
+      case Right(handle) => JsSuccess(handle)
+      case Left(err)     => JsError(err)
+    }
+  }
+
+  override def writes(handle: TwitterHandle) = JsString(handle.value)
+
+}
+```
+--
+* Reasonably easy code to understand/write
+* But lots of boilerplate if we need to write this for every refined type
+---
+# Refined-play integration library
+
+```scala
+libraryDependencies += "be.venneborg" %% "play-refined" % "0.0.1"
+```
+
+[play-refined](https://github.com/kwark/play-refined) provides:
+* JSON serialization/deserialization support for refined types
+* TODO
+
+---
+Demo
+
+
+
+---
+# Refined integrations
+
+### Configuration
+* [PureConfig](https://github.com/fthomas/refined)
+* [Validated Typesafe Configuration](https://github.com/carlpulley/validated-config)
+* [Ciris](https://github.com/vlovgr/ciris)
+
+### Database access
+* [Slick](https://github.com/kwark/slick-refined)
+* [Doobie](https://github.com/tpolecat/doobie)
+* [Anorm](https://github.com/derekmorr/refined-anorm)
+
+---
+# More refined integrations
+
+### Json
+* [Circe](https://github.com/circe/circe)
+* [Argonaut Shapeless](https://github.com/alexarchambault/argonaut-shapeless)
+* [Play Json](https://github.com/lunaryorn/play-json-refined)
+
+### Other
+* [Monocle](https://github.com/julien-truffaut/Monocle) -- lens library
+* [Decline](https://github.com/bkirwi/decline) -- command line parsing
+* [Quasar](https://github.com/quasar-analytics/quasar) -- NoSql analytics engine
+* [kantan.codecs](https://github.com/nrinaudo/kantan.codecs) -- Codecs f.e. for CSV parsing (WIP)
+
+
+
+---
+class: center, middle
+
+# Thanks!
+Code and slides at `kwark/refined-in-practice` on GitHub
+
+## Questions?
+
+
+ </textarea>
+    <script src="remark-latest.min.js">
+    </script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
