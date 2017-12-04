@@ -14,7 +14,7 @@ class JsonTest extends FunSuite with Matchers {
 
   test("manual json format") {
 
-    implicit val twitterHandleFormat = new Format[TwitterHandle] {
+    implicit val twitterHandleFormat: Format[TwitterHandle] = new Format[TwitterHandle] {
 
       override def reads(json: JsValue) = json.validate[String] flatMap { s =>
         RefType.applyRef[TwitterHandle](s) match {
@@ -27,7 +27,7 @@ class JsonTest extends FunSuite with Matchers {
 
     }
 
-    implicit val nameFormat = new Format[Name] {
+    implicit val nameFormat: Format[Name] = new Format[Name] {
 
       override def reads(json: JsValue) = json.validate[String] flatMap { s =>
         RefType.applyRef[Name](s) match {

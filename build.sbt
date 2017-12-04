@@ -27,14 +27,16 @@ lazy val core = project
   .settings(baseSettings: _*)
   .settings(libraryDependencies ++= Seq(
     // normal deps
-    "eu.timepit"         %% "refined"        % "0.8.4",
-    "com.typesafe.slick" %% "slick"          % "3.2.1",
-    "com.typesafe.slick" %% "slick-hikaricp" % "3.2.1",
-    "com.typesafe.play"  %% "play-json"      % "2.6.7",
-    "be.venneborg"       %% "slick-refined"  % "0.0.1+7-1c4c3305+20171028-1318",
+    "eu.timepit"         %% "refined"          % "0.8.4",
+    "com.typesafe.slick" %% "slick"            % "3.2.1",
+    "com.typesafe.slick" %% "slick-hikaricp"   % "3.2.1",
+    "com.typesafe.play"  %% "play-json"        % "2.6.7",
+    "be.venneborg"       %% "slick-refined"    % "0.1.0",
+    "be.venneborg"       %% "play26-refined"   % "0.1.0",
     // test deps
-    "org.scalatest"      %% "scalatest"      % "3.0.4"        % "test",
-    "com.h2database"     %  "h2"             % "1.4.196"      % "test"
+    "org.scalatest"      %% "scalatest"          % "3.0.4"    % "test",
+    "eu.timepit"         %% "refined-scalacheck" % "0.8.4"    % "test",
+    "com.h2database"     %  "h2"                 % "1.4.196"  % "test"
   ))
 
 

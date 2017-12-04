@@ -15,7 +15,8 @@ class SlickTest extends FunSuite with BeforeAndAfterAll with ScalaFutures with M
 
     db.run(developers += developer).futureValue
     db.run(developers.length.result).futureValue shouldBe 1
-    """developers.filter(_.twitter.like("kwa"))""" shouldNot compile
+    """developers.filter(_.twitter.like("kwa%"))""" shouldNot compile
+    db.run(developers.filter(_.twitter.asInstanceOf[Rep[String]].like("%kwa%")).result).futureValue should contain theSameElementsAs Seq(developer)
   }
 
 

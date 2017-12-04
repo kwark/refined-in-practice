@@ -20,9 +20,12 @@ class RefinedSlickTest extends FunSuite with BeforeAndAfterAll with ScalaFutures
     // slick query
     db.run(developers.filter(_.twitter.like("%kwa%")).result).futureValue should contain theSameElementsAs Seq(developer)
 
-    // plain sql
+    // plain sql query
     import _root_.be.venneborg.refined.RefinedPlainSql._
-    db.run(sql"""select name from mytable where twitter like "%rk"""".as[Name]).futureValue should contain theSameElementsAs Seq(developer)
+    db.run(sql"""SELECT NAME FROM DEVELOPERS WHERE TWITTER LIKE '%rkk'""".as[Name]).futureValue should contain theSameElementsAs Seq(developer.name)
+
+    // plain sql update
+    db.run(sqlu"""UPDATE DEVELOPERS SET NAME = 'Peter DM Mortier' WHERE TWITTER = '@kwarkk'""").futureValue shouldBe 1
 
   }
 

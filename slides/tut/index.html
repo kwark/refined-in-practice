@@ -18,8 +18,9 @@
           width: 160px;
           float: right;
       }
-      .image-small-centered img {
-          width: 120px; align: center;
+
+      .image-half img {
+          width: 70%;
       }
 
       th, td {
@@ -33,6 +34,7 @@
     <textarea id="source">
 
 class: center, middle
+background-image: url(background.jpg)
 
 # Refined Types In Practice
 ## Peter Mortier
@@ -61,11 +63,14 @@ Interested in scala through [Functional Programming Principles in Scala](https:/
 # Agenda
 
 * Stringly typed
-* Making illegal states unrepresentable
 * Smart constructors
 * Taking it to the type level
-* Validating input
 * Refined types in practice
+* Slick integration
+* Play integration
+* Demo
+* Extension methods
+
 
 ---
 
@@ -128,6 +133,7 @@ Developer(new Name("@kwarkk"), new TwitterHandle("Peter"))
 ```
 
 ???
+
 https://stackoverflow.com/questions/34561614/should-i-use-the-final-modifier-when-declaring-case-classes
 
 ---
@@ -135,6 +141,7 @@ https://stackoverflow.com/questions/34561614/should-i-use-the-final-modifier-whe
 
 ```tut:silent
 object smart {
+
   final class TwitterHandle private(val value: String) extends AnyVal
 
   object TwitterHandle {
@@ -159,7 +166,9 @@ object smart {
 ```
 
 ???
-why not a case class
+https://docs.scala-lang.org/overviews/core/value-classes.html
+why a value class instead of a case class: avoids allocation
+
 
 ---
 # Smart constructors are not perfect
@@ -192,19 +201,13 @@ smart.Developer(
 
 
 ---
-#Idea: encode validations at the typelevel
+#Idea: encode validations at the typelevel .image-200[![Idea](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRRFVNLa-nEYwfufPyCpabTcrcChYY9q0aVuBLWtCMU5IMyE7ZF0g)]
 
 * This is the basic idea behind [refinement types](https://en.wikipedia.org/wiki/Refinement_%28computing#29#Refinement_types):
 
 > *"In type theory, a refinement type is a type endowed with a predicate which is assumed to hold for any element of the refined type."*
 
-* Luckily, there already exists a Scala [refined](https://github.com/fthomas/refined) library by Frank Thomas
-
-.image-small-centered[![Frank Thomas](https://avatars3.githubusercontent.com/u/141252?s=460&v=4)]
-
-???
-
-TODO add lightbulb
+* Luckily, there already exists a Scala [refined](https://github.com/fthomas/refined) library by Frank Thomas.
 
 ---
 #Refined basics
@@ -234,10 +237,12 @@ import eu.timepit.refined.string.StartsWith
 import eu.timepit.refined.W
 
 object refinements {
+
     type Name = String Refined NonEmpty
     type TwitterHandle = String Refined StartsWith[W.`"@"`.T]
 
     final case class Developer(name: Name, twitterHandle: TwitterHandle)
+
 }
 ```
 
@@ -270,7 +275,7 @@ type TwitterHandle = String Refined StartsWith["@"]
 This is already available in:
 * [Dotty](http://dotty.epfl.ch/docs/reference/singleton-types.html)
 * [Typelevel scala (-Yliteral-types)](https://typelevel.org/scala/)
-* [scala 2.12.5 (hopefully)](https://github.com/scala/scala/pull/5310)
+* [scala 2.12.5 maybe, 2.13 definitely](https://github.com/scala/scala/pull/5310)
 
 ---
 # Refining literal values at compile time
@@ -545,10 +550,15 @@ object Schema {
 }
 ```
 ???
-TODO: explain Tag
-    explain profile
 
-http://slick.lightbend.com/doc/3.2.1/concepts.html
+http://slick.lightbend.com/doc/3.2.1/concepts.html#profiles:
+Even when using a standard interface for database drivers like JDBC
+there are many differences between databases in the SQL dialect they understand,
+the way they encode data types, or other idiosyncracies.
+Slick abstracts over these differences with profiles.
+
+https://stackoverflow.com/questions/31849946/scala-slick-table-tag
+
 
 ---
 # Standard mappings don't work
@@ -594,7 +604,7 @@ implicit val twitterMapping = MappedColumnType.base[TwitterHandle, String](
 )
 ```
 
-This will protect you from DB rows, which don't pass the predicate
+This will protect you from reading DB rows, which don't pass the predicate
 ---
 # Custom Slick mappings
 
@@ -616,21 +626,22 @@ db.run(developers.filter(_.twitter.like("%kwa%")).result)
 
 Sigh! We might just as well give-up and go back using unrefined types
 
-???
-A Database object encapsulates the resources that are required to connect to a specific database. This can be just a number of connection parameters but in most cases it includes a connection pool and a thread pool.
+```scala
+db.run(developers.filter(_.twitter.asInstanceOf[Rep[String]].like("%kwa%")).result)
+```
 
-TODO try:
-    .asInstanceOf[Rep[String]] => does this work
-    .map(_.value) => does not work
+???
+A Database object encapsulates the resources that are required to connect to a specific database.
+This can be just a number of connection parameters but in most cases it includes a connection pool and a thread pool.
 
 ---
-# Don't despair: help is here
+# Integration library for Refined and Slick
 
-Integration library for Refined and Slick:
-
+* avoids boilerplate
+* avoids asInstanceOf[Rep[xxx]]
 
 ```scala
-libraryDependencies += "be.venneborg" %% "slick-refined" % "0.0.1"
+libraryDependencies += "be.venneborg" %% "slick-refined" % "0.1.0"
 ```
 
 [slick-refined](https://github.com/kwark/slick-refined) provides:
@@ -656,8 +667,6 @@ trait MyRefinedSlickProfile extends H2Profile
 object MyRefinedSlickProfile extends MyRefinedSlickProfile
 ```
 ???
-Even when using a standard interface for database drivers like JDBC there are many differences between databases in the SQL dialect they understand, the way they encode data types, or other idiosyncracies. Slick abstracts over these differences with profiles
-
 https://github.com/scala/bug/issues/10477
 
 ---
@@ -700,8 +709,11 @@ db.run(developers.filter(_.twitter.like("%kwa%")).result)
 ```scala
 import _root_.be.venneborg.refined.RefinedPlainSql._
 
-db.run(sql"""select name from developers where twitter like "%rk" """.as[Name])
-db.run(sqlu"""update developers set name = "Peter DM Mortier" where twitter like "@kwarkk" """) //TODO check if correct
+db.run(sql"""SELECT NAME FROM DEVELOPERS
+    WHERE TWITTER LIKE '%rk'""".as[Name])
+
+db.run(sqlu"""UPDATE DEVELOPERS SET NAME = 'Peter DM Mortier'
+    WHERE TWITTER = '"@kwarkk'""")
 ```
 ---
 # Json serialization
@@ -725,7 +737,7 @@ No instance of play.api.libs.json.Format is available
 in the implicit scope (Hint: if declared in the same file, make sure it's declared before)
 ```
 ---
-#Manual Json Format
+# Manual Json Format
 
 ```tut:silent
 import play.api.libs.json._
@@ -747,20 +759,76 @@ implicit val twitterHandleFormat = new Format[TwitterHandle] {
 --
 * Reasonably easy code to understand/write
 * But lots of boilerplate if we need to write this for every refined type
+
 ---
 # Refined-play integration library
 
 ```scala
-libraryDependencies += "be.venneborg" %% "play-refined" % "0.0.1"
+libraryDependencies += "be.venneborg" %% "play-refined" % "0.1.0"
 ```
 
 [play-refined](https://github.com/kwark/play-refined) provides:
 * JSON serialization/deserialization support for refined types
-* TODO
+
+* Path/Query binding for refined types:<br/>
+    for example `/developers/:handle => controller.lookup(handle)`
+
+* Form binding for refined types
+
+* translation of Refined error messages to Play standard error codes
 
 ---
-Demo
+class: center, middle
 
+# Demo
+
+https://github.com/kwark/play-scala-slick-example
+
+### Introducing refined to existing CRUD application
+
+???
+
+---
+# Extension methods
+
+* What if I need to perform operations on Refined types?
+
+* Use 'X my library' pattern to decorate types/classes with additional methods
+
+* Test your assumptions using property based testing: `refined-scalacheck`
+
+---
+```tut:silent
+import eu.timepit.refined.types.numeric._
+import eu.timepit.refined.types.string._
+
+object RefinedOps {
+
+  implicit class PosIntOps(val p: PosInt) {
+
+    def minus(that: PosInt): Option[PosInt] =
+        RefType.applyRef[PosInt](p.value - that.value).toOption
+
+    def add(that: PosInt): Option[PosInt] =
+        RefType.applyRef[PosInt](p.value + that.value).toOption
+
+    def unsafeAdd(that: PosInt): PosInt =
+        Refined.unsafeApply(p.value + that.value)
+
+  }
+
+}
+```
+
+
+---
+# Refined gotcha's
+
+* Intellij squiggly lines
+* Don't use infix type notation! Use `And[XXX, YYY]` instead of `XXX And YYY`
+* Watch your compile times!
+* Refined primitive values are always boxed
+* How does it compare to Scalactic: Posint
 
 
 ---
@@ -790,7 +858,10 @@ Demo
 * [Quasar](https://github.com/quasar-analytics/quasar) -- NoSql analytics engine
 * [kantan.codecs](https://github.com/nrinaudo/kantan.codecs) -- Codecs f.e. for CSV parsing (WIP)
 
+---
+class: center, middle
 
+.image-half[![Static typing](./degoes_tweet.png)]
 
 ---
 class: center, middle
@@ -805,7 +876,10 @@ Code and slides at `kwark/refined-in-practice` on GitHub
     <script src="remark-latest.min.js">
     </script>
     <script>
-      var slideshow = remark.create();
+      var slideshow = remark.create({
+          highlightLanguage: 'scala',
+          highlightStyle: 'solarized-light',
+      });
     </script>
   </body>
 </html>

@@ -18,9 +18,9 @@ object Schema {
     }
   )
 
-  class Developers(tag: Tag) extends Table[Developer](tag, "developers") {
-    def twitter = column[TwitterHandle]("twitter", O.PrimaryKey)
-    def name    = column[Name]("name")
+  class Developers(tag: Tag) extends Table[Developer](tag, "DEVELOPERS") {
+    def twitter = column[TwitterHandle]("TWITTER", O.PrimaryKey)
+    def name    = column[Name]("NAME")
 
     def * = (name, twitter) <> (Developer.tupled, Developer.unapply)
   }
