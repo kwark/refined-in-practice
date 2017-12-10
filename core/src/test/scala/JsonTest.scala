@@ -46,5 +46,14 @@ class JsonTest extends FunSuite with Matchers {
 
   }
 
+  test("automatic json format") {
+
+    import _root_.be.venneborg.refined.play.RefinedJsonFormats._
+
+    implicit val developerFormat = Json.format[Developer]
+
+    val result: JsValue = Json.toJson(developer)
+    Json.fromJson[Developer](result).get shouldBe developer
+  }
 
 }

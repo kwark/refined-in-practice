@@ -737,7 +737,7 @@ No instance of play.api.libs.json.Format is available
 in the implicit scope (Hint: if declared in the same file, make sure it's declared before)
 ```
 ---
-# Manual Json Format
+# Manual Json Forma
 
 ```tut:silent
 import play.api.libs.json._
@@ -747,8 +747,8 @@ implicit val twitterHandleFormat = new Format[TwitterHandle] {
 
   override def reads(json: JsValue) = json.validate[String] flatMap { s =>
     RefType.applyRef[TwitterHandle](s) match {
-      case Right(handle) => JsSuccess(handle)
-      case Left(err)     => JsError(err)
+      case Right(v)   => JsSuccess(v)
+      case Left(err)  => JsError(err)
     }
   }
 
@@ -761,6 +761,32 @@ implicit val twitterHandleFormat = new Format[TwitterHandle] {
 * But lots of boilerplate if we need to write this for every refined type
 
 ---
+# Manual Form binding
+
+```tut:silent
+import improved_refinements._
+import eu.timepit.refined.api.RefType
+import play.api.data.FormError
+import play.api.data.format.Formatter
+
+implicit val twitterHandleFormatter = new Formatter[TwitterHandle] {
+
+  override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], TwitterHandle] = {
+    data.get(key) match {
+      case None    => Left(Seq(FormError(key, "error.required")))
+      case Some(v) => RefType.applyRef[TwitterHandle](v) match {
+        case Right(v)     => Right(v)
+        case Left(error)  => Left(Seq(FormError(key, error)))
+      }
+    }
+
+  }
+
+  override def unbind(key: String, value: TwitterHandle) = Map[String, String](key -> value.value)
+
+}
+```
+----
 # Refined-play integration library
 
 ```scala
@@ -775,7 +801,34 @@ libraryDependencies += "be.venneborg" %% "play-refined" % "0.1.0"
 
 * Form binding for refined types
 
-* translation of Refined error messages to Play standard error codes
+* translation of Refined error messages to standard Play error codes
+---
+Examples
+
+```tut:silent
+import improved_refinements._
+import be.venneborg.refined.play.RefinedJsonFormats._
+
+implicit val developerFormat = Json.format[Developer]
+
+
+```
+--
+```
+import improved_refinements._
+import be.venneborg.refined.play.RefinedForms._
+
+val developerForm = Form(
+  mapping(
+    "name"   -> Forms.of[Name],
+    "handle" -> Forms.of[TwitterHandle]
+  )(Developer.apply)(Developer.unapply)
+)
+
+```
+
+
+```
 
 ---
 class: center, middle
@@ -787,6 +840,11 @@ https://github.com/kwark/play-scala-slick-example
 ### Introducing refined to existing CRUD application
 
 ???
+groll initial
+run
+form entry
+show json serialization
+
 
 ---
 # Extension methods
@@ -825,11 +883,33 @@ object RefinedOps {
 # Refined gotcha's
 
 * Intellij squiggly lines
-* Don't use infix type notation! Use `And[XXX, YYY]` instead of `XXX And YYY`
-* Watch your compile times!
-* Refined primitive values are always boxed
-* How does it compare to Scalactic: Posint
 
+* Watch-out when using infix type notation! Use `String Refined (And[XXX, YYY])`
+
+* Watch your compile times!
+
+* Refined primitives are always boxed
+
+* Validation error messages are not always clear
+
+???
+https://scastie.scala-lang.org/kwark/0v3U5OtSSlCypBxeCJoLrA
+https://github.com/fthomas/refined/blob/master/modules/scalaz/jvm/src/test/scala-2.12/eu/timepit/refined/scalaz/RefineJavapSpec.scala
+
+---
+# Refined advantages
+
+* more typesafety
+* uniform validation logic
+
+> Typesafety for nothing, validation for free
+
+---
+# Alternatives
+
+* Bond https://github.com/fwbrasil/bond
+
+* scalactic: `PosInt, PozInt`
 
 ---
 # Refined integrations
