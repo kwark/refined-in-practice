@@ -771,7 +771,8 @@ import play.api.data.format.Formatter
 
 implicit val twitterHandleFormatter = new Formatter[TwitterHandle] {
 
-  override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], TwitterHandle] = {
+  override def bind(key: String, data: Map[String, String]):
+    Either[Seq[FormError], TwitterHandle] = {
     data.get(key) match {
       case None    => Left(Seq(FormError(key, "error.required")))
       case Some(v) => RefType.applyRef[TwitterHandle](v) match {
@@ -782,11 +783,12 @@ implicit val twitterHandleFormatter = new Formatter[TwitterHandle] {
 
   }
 
-  override def unbind(key: String, value: TwitterHandle) = Map[String, String](key -> value.value)
+  override def unbind(key: String, value: TwitterHandle) =
+    Map[String, String](key -> value.value)
 
 }
 ```
-----
+---
 # Refined-play integration library
 
 ```scala
@@ -803,14 +805,18 @@ libraryDependencies += "be.venneborg" %% "play-refined" % "0.1.0"
 
 * translation of Refined error messages to standard Play error codes
 ---
-Examples
+No more boilerplate
 
 ```tut:silent
 import improved_refinements._
 import be.venneborg.refined.play.RefinedJsonFormats._
+import play.api.libs.json._
 
 implicit val developerFormat = Json.format[Developer]
 
+Json.
+  parse("""{ "name": "Peter Mortier", "twitterHandle": "@kwarkk" }""").
+  as[Developer]
 
 ```
 --
@@ -825,11 +831,10 @@ val developerForm = Form(
   )(Developer.apply)(Developer.unapply)
 )
 
+developerForm.
+    bind(Map("name" -> "Peter Mortier", "handle" -> "@kwarkk"))
+
 ```
-
-
-```
-
 ---
 class: center, middle
 
@@ -900,7 +905,7 @@ https://github.com/fthomas/refined/blob/master/modules/scalaz/jvm/src/test/scala
 ---
 # Refined advantages
 
-* more typesafety
+* additional typesafety
 * uniform validation logic
 
 > Typesafety for nothing, validation for free
@@ -908,9 +913,9 @@ https://github.com/fthomas/refined/blob/master/modules/scalaz/jvm/src/test/scala
 ---
 # Alternatives
 
-* Bond https://github.com/fwbrasil/bond
+* [Bond](https://github.com/fwbrasil/bond)
 
-* scalactic: `PosInt, PozInt`
+* [scalactic](http://www.scalactic.org/): `PosInt, PozInt`
 
 ---
 # Refined integrations
@@ -959,6 +964,7 @@ class: center, middle
 
 # Thanks!
 Code and slides at `kwark/refined-in-practice` on GitHub
+Presentation available at https://kwark.github.io/refined-in-practice
 
 This presentation will be soon available on the Scala eXchange London website at the following link: https://skillsmatter.com/conferences/8784-scala-exchange-2017#skillscasts
 
