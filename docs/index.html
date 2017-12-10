@@ -84,7 +84,7 @@ Interested in scala through [Functional Programming Principles in Scala](https:/
 * A `String` can *represent* anything
 * A `String` can *contain* anything
 
-```tut:silent
+```scala
 final case class Developer(name: String, twitterHandle: String)
 
 Developer("Peter", "@kwarkk") // ok
@@ -95,7 +95,7 @@ Developer("@kwarkk", "Peter") // Oops, we've got a bug!
 ---
 # Type aliases to the rescue ?
 
-```tut:silent
+```scala
 type Name = String
 type TwitterHandle = String
 
@@ -111,7 +111,7 @@ Developer(twitterHandle, name) // Again, we've got a bug
 ---
 # Value classes to the rescue ?
 
-```tut:silent
+```scala
 final class Name(val value: String) extends AnyVal
 final class TwitterHandle (val value: String) extends AnyVal
 
@@ -119,8 +119,18 @@ final case class Developer(name: Name, twitterHandle: TwitterHandle)
 ```
 And now we finally can't switch arguments anymore !
 
-```tut:fail
-Developer(new TwitterHandle("@kwarkk"), new Name("Peter"))
+```scala
+scala> Developer(new TwitterHandle("@kwarkk"), new Name("Peter"))
+<console>:19: error: type mismatch;
+ found   : TwitterHandle
+ required: Name
+       Developer(new TwitterHandle("@kwarkk"), new Name("Peter"))
+                 ^
+<console>:19: error: type mismatch;
+ found   : Name
+ required: TwitterHandle
+       Developer(new TwitterHandle("@kwarkk"), new Name("Peter"))
+                                               ^
 ```
 ???
 
@@ -131,7 +141,7 @@ https://stackoverflow.com/questions/34561614/should-i-use-the-final-modifier-whe
 
 But these value classes still contain any `String`:
 
-```tut:silent
+```scala
 // Sigh, yet another bug!
 Developer(new Name("@kwarkk"), new TwitterHandle("Peter"))
 ```
@@ -139,7 +149,7 @@ Developer(new Name("@kwarkk"), new TwitterHandle("Peter"))
 ---
 # Add validation with smart constructors
 
-```tut:silent
+```scala
 object smart {
 
   final class TwitterHandle private(val value: String) extends AnyVal
@@ -173,7 +183,7 @@ why a value class instead of a case class: avoids allocation
 ---
 # Smart constructors are not perfect
 
-```tut:silent
+```scala
 smart.Developer(
     smart.Name.fromString("Peter Mortier").get,
     smart.TwitterHandle.fromString("@kwarkk").get
@@ -230,7 +240,7 @@ Examples:
 ---
 #Refined example
 
-```tut:silent
+```scala
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.collection.NonEmpty
 import eu.timepit.refined.string.StartsWith
@@ -298,7 +308,7 @@ scala> "foo": refinements.TwitterHandle
 ---
 #Creating a Developer from literal values is now easier than ever!
 
-```tut:silent
+```scala
 import eu.timepit.refined._
 import eu.timepit.refined.auto._
 
@@ -307,7 +317,7 @@ refinements.Developer("Peter Mortier", "@kwarkk") // Hell yeah
 --
 And swapping arguments fails to compile
 
-```tut:silent:fail
+```scala
 refinements.Developer("@kwarkk", "Peter Mortier") // Does not compile, sweet
 ```
 
@@ -316,22 +326,22 @@ refinements.Developer("@kwarkk", "Peter Mortier") // Does not compile, sweet
 
 * Refine using the predicate:
 
-```tut:silent
+```scala
 val name: refinements.Name = refineMV[NonEmpty]("Peter Mortier")
 ```
-```tut:fail:silent
+```scala
 val handle: refinements.TwitterHandle = refineMV[StartsWith[W.`"@"`.T]]("wrong")
 ```
 --
 * Refine using the refined type:
 
-```tut:silent
+```scala
 import eu.timepit.refined.api.RefType
 
 RefType.applyRefM[refinements.Name]("Peter Mortier")
 ```
 
-```tut:silent:fail
+```scala
 RefType.applyRefM[refinements.TwitterHandle]("wrong")
 ```
 ---
@@ -341,13 +351,13 @@ Most of the time however we won't have literals available
 
 * Refine using the predicate:
 
-```tut:silent
+```scala
 val result: Either[String, refinements.Name] = refineV[NonEmpty]("Peter Mortier")
 ```
 --
 * Refine using the refined type:
 
-```tut:silent
+```scala
 val result: Either[String, refinements.TwitterHandle] =
         RefType.applyRef[refinements.TwitterHandle]("wrong")
 ```
@@ -498,7 +508,7 @@ According to [Twitter's support page](https://support.twitter.com/articles/10129
 ---
 # Improved `TwitterHandle`
 
-```tut:silent
+```scala
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.boolean.{AllOf, Not, Or, And}
 import eu.timepit.refined.string.{MatchesRegex, StartsWith}
@@ -533,7 +543,7 @@ Use Shapeless HList to encode a list at the typelevel
 * We'll use Lightbend's Slick to retrieve/store Developers
 * We need to map our Developer from/to a DB table
 
-```tut:silent:fail
+```scala
 object Schema {
 
   import slick.jdbc.H2Profile.api._
@@ -739,7 +749,7 @@ in the implicit scope (Hint: if declared in the same file, make sure it's declar
 ---
 # Manual Json Format
 
-```tut:silent
+```scala
 import play.api.libs.json._
 import improved_refinements._
 
@@ -763,7 +773,7 @@ implicit val twitterHandleFormat = new Format[TwitterHandle] {
 ---
 # Manual Form binding
 
-```tut:silent
+```scala
 import improved_refinements._
 import eu.timepit.refined.api.RefType
 import play.api.data.FormError
@@ -805,7 +815,7 @@ libraryDependencies += "be.venneborg" %% "play-refined" % "0.1.0"
 ---
 Examples
 
-```tut:silent
+```scala
 import improved_refinements._
 import be.venneborg.refined.play.RefinedJsonFormats._
 
@@ -856,7 +866,7 @@ show json serialization
 * Test your assumptions using property based testing: `refined-scalacheck`
 
 ---
-```tut:silent
+```scala
 import eu.timepit.refined.types.numeric._
 import eu.timepit.refined.types.string._
 
@@ -919,9 +929,6 @@ https://github.com/fthomas/refined/blob/master/modules/scalaz/jvm/src/test/scala
 * [PureConfig](https://github.com/fthomas/refined)
 * [Validated Typesafe Configuration](https://github.com/carlpulley/validated-config)
 * [Ciris](https://github.com/vlovgr/ciris)
-
-### Testing
-* [scalacheck](https://github.com/fthomas/refined)
 
 ### Database access
 * [Slick](https://github.com/kwark/slick-refined)

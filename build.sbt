@@ -30,7 +30,7 @@ lazy val core = project
     "eu.timepit"         %% "refined"          % "0.8.4",
     "com.typesafe.slick" %% "slick"            % "3.2.1",
     "com.typesafe.slick" %% "slick-hikaricp"   % "3.2.1",
-    "com.typesafe.play"  %% "play-json"        % "2.6.7",
+    "com.typesafe.play"  %% "play-json"        % "2.6.8",
     "be.venneborg"       %% "slick-refined"    % "0.1.0",
     "be.venneborg"       %% "play26-refined"   % "0.1.0",
     // test deps
