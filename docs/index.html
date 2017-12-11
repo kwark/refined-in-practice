@@ -506,6 +506,20 @@ According to [Twitter's support page](https://support.twitter.com/articles/10129
 * A username can only contain alphanumeric characters (letters A-Z, numbers 0-9) with the exception of underscores
 
 ---
+# Predefined Refined types
+
+* `eu.timepit.refined.types.char`: `LowerCaseChar`, `UpperCaseChar`
+
+* `eu.timepit.refined.types.string`: `NonEmptyString`
+
+* `eu.timepit.refined.types.numeric`: `PosInt`, `NonNegInt`, `NegInt`, ...
+
+* `eu.timepit.refined.types.net`: `PortNumber`, `SystemPortNumber`, ...
+
+* `eu.timepit.refined.types.time`: `Month`, `Day`, `Hour`, `Minute`, `Second`, `Millis`
+
+
+---
 # Improved `TwitterHandle`
 
 ```scala
@@ -592,8 +606,6 @@ It looks like Slick does not know how to map our refined types from/to SQL types
 
 Let's fix that by writing some mappings
 
-* First try
-
 ```scala
 import eu.timepit.refined.api.Refined
 import improved.TwitterHandle
@@ -604,7 +616,7 @@ implicit val twitterMapping = MappedColumnType.base[TwitterHandle, String](
 ```
 
 `Refined.unsafeApply` is an escape hatch!
-
+--
 ```scala
 implicit val twitterMapping = MappedColumnType.base[TwitterHandle, String](
   _.value, v => RefType.applyRef[Name](v) match { 

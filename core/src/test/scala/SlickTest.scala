@@ -1,8 +1,10 @@
 import eu.timepit.refined.auto._
+import eu.timepit.refined.types.numeric.PosInt
 import org.scalatest.{BeforeAndAfterAll, FunSuite, Matchers}
 import slick.jdbc.H2Profile.api._
 import improved_refinements._
 import Schema._
+import eu.timepit.refined.api.RefType
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Seconds, Span}
 
@@ -19,14 +21,22 @@ class SlickTest extends FunSuite with BeforeAndAfterAll with ScalaFutures with M
     db.run(developers.filter(_.twitter.asInstanceOf[Rep[String]].like("%kwa%")).result).futureValue should contain theSameElementsAs Seq(developer)
   }
 
+  test("number") {
+    db.run(testTable += 5).futureValue
+    db.run(testTable.length.result).futureValue shouldBe 1
+
+    db.run(testTable.filter(_.number.asInstanceOf[Rep[Int]] > 4).result).futureValue.head shouldBe RefType.applyRefM[PosInt](5)
+  }
+
 
   override def beforeAll() = {
     db = Database.forURL("jdbc:h2:mem:test-nonrefined;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver")
-    db.run(developers.schema.create).futureValue
+    db.run(developers.schema.create.andThen(testTable.schema.create)).futureValue
+
   }
 
   override def afterAll(): Unit = {
-    db.run(developers.schema.drop).futureValue
+    db.run(developers.schema.drop.andThen(testTable.schema.drop)).futureValue
     db.close()
   }
 

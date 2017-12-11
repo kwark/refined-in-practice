@@ -1,7 +1,9 @@
 import java.sql.SQLException
 
 import eu.timepit.refined.api.{RefType, Refined}
+import eu.timepit.refined.types.numeric.PosInt
 import improved_refinements.{Developer, Name, TwitterHandle}
+
 
 object Schema {
 
@@ -25,7 +27,18 @@ object Schema {
     def * = (name, twitter) <> (Developer.tupled, Developer.unapply)
   }
 
+  implicit val postIntMapping = MappedColumnType.base[PosInt, Int](
+    _.value, Refined.unsafeApply
+  )
+
+  class TestTable(tag: Tag) extends Table[(PosInt)](tag, "TESTING") {
+    def number = column[PosInt]("NUMBER", O.PrimaryKey)
+
+    def * = (number)
+  }
+
   val developers = TableQuery[Developers]
+  val testTable = TableQuery[TestTable]
 
 
 }
