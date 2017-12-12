@@ -94,16 +94,6 @@ Interested in scala through [Functional Programming Principles in Scala](https:/
 * A `String` can *represent* anything
 * A `String` can *contain* anything
 
---
-
-```scala
-final case class Developer(name: String, twitterHandle: String)
-
-Developer("Peter", "@kwarkk") // ok
-
-Developer("@kwarkk", "Peter") // Oops, we've got a bug!
-```
-
 ???
 A pun on strongly typed
 
@@ -118,6 +108,17 @@ Why do we keep on using them:
 baked into the language (every API supports them)
 
 types like String come with a whole lot of useful methods: concat, toUppercase, ...
+
+--
+
+```scala
+final case class Developer(name: String, twitterHandle: String)
+
+Developer("Peter", "@kwarkk") // ok
+
+Developer("@kwarkk", "Peter") // Oops, we've got a bug!
+```
+
 
 ---
 # Type aliases to the rescue ?
@@ -139,9 +140,12 @@ Developer(twitterHandle, name) // Again, we've got a bug
 Try a solution using a type alias
 
 type aliases don't work for this
-type aliases are great:
-        if you have a complicated type and want to
-        we'll see a good use for using them later on
+
+type aliases are great
+
+if you have a complicated type and want to avoid retyping it over and over again, or clear up your method signatures
+
+we'll see a good use for using them later on
 
 ---
 # Value classes to the rescue ?
@@ -169,6 +173,7 @@ scala> Developer(new TwitterHandle("@kwarkk"), new Name("Peter"))
 ```
 ???
 value class: class with single parameter, which extends AnyVal
+
 https://stackoverflow.com/questions/34561614/should-i-use-the-final-modifier-when-declaring-case-classes
 
 ---
@@ -212,8 +217,6 @@ object smart {
 
 ???
 https://docs.scala-lang.org/overviews/core/value-classes.html
-why a value class instead of a case class: avoids allocation
-
 
 ---
 # Smart constructors are not perfect
@@ -226,7 +229,7 @@ smart.Developer(
 ```
 
 --
-* Values are always wrapped in an Option
+* Our values are always wrapped in an Option
 
 --
 
@@ -308,18 +311,20 @@ object refinements {
 
 }
 ```
+???
+point out base type and predicate
+
+make good use of a type alias
+
+predicate with a value as a type parameters
+
 --
 Some predicates require encoding literals to the type-level
 
 We use [Shapeless Witness macro](https://github.com/milessabin/shapeless/wiki/Feature-overview:-shapeless-2.0.0#singleton-typed-literals) to achieve this
 
-???
-make good use of a type alias
-point out base type and predicate
-predicate with a value as a type parameters
-
 ---
-# Literal based singleton types .image-200[![Pop quiz](./iStock_71171629_SMALL.jpg)]
+# Sidebar: Literal based singleton types .image-200[![Pop quiz](./iStock_71171629_SMALL.jpg)]
 
 Pop quiz: How many types does the value: `"foo"` belong to?
 
@@ -339,6 +344,12 @@ Answer is 4:
 --
   `"foo"`
 
+???
+
+singleton type is a type inhabited by a single value
+
+Any (top type), AnyRef (because it is a reference type, String and the actual value is also a type)
+
 --
 
 There is a [SIP](http://docs.scala-lang.org/sips/pending/42.type.html) to expose these literal based singleton types
@@ -352,10 +363,6 @@ This is already available in:
 * [Typelevel scala (-Yliteral-types)](https://typelevel.org/scala/)
 * [scala 2.12.5 maybe, 2.13 definitely](https://github.com/scala/scala/pull/5310)
 
-???
-
-singleton type is a type inhabited by a single value
-Any (top type), AnyRef (because it is a reference type, String and the actual value is also a type)
 ---
 ## Try it out by yourself
 
@@ -389,12 +396,18 @@ res6: Boolean = false
 ---
 # Refining literal values at compile time
 
-Uses macro magic: `import eu.timepit.refined.auto._`
+Using a magic macro: `import eu.timepit.refined.auto._`
 
 ```scala
 scala>"Peter Mortier": refinements.Name
 res0: refinements.Name = Peter Mortier
 ```
+???
+Let's see if Refinement types can address our concerns:
+
+literal values can be automatically converted to refined type
+
+validation logic is declarative (we didn't write any actual validation code)
 
 --
 
@@ -405,10 +418,6 @@ scala> "foo": refinements.TwitterHandle
 <console>:15: error: Predicate failed: "foo".startsWith("@").
        "foo": refinements.TwitterHandle
 ```
-???
-Let's see if Refinement types can address our concerns:
-literal values can be automatically converted to refined type
-validation logic is declarative (we didn't write any actual validation code)
 
 ---
 #Creating a Developer from literal values is now easier than ever!
