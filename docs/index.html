@@ -442,63 +442,61 @@ refinements.Developer("@kwarkk", "Peter Mortier") // Does not compile, sweet
 ---
 # Manually refine if this is too much magic
 
-* Refine using the predicate:
-
-```scala
-import eu.timepit.refined.refineMV
-
-val name: refinements.Name = refineMV[NonEmpty]("Peter Mortier")
-```
-```scala
-val handle: refinements.TwitterHandle = refineMV[StartsWith[W.`"@"`.T]]("wrong")
-```
---
-* Refine using the refined type:
-
 ```scala
 import eu.timepit.refined.api.RefType
-
-RefType.applyRefM[refinements.Name]("Peter Mortier")
 ```
 
 ```scala
-RefType.applyRefM[refinements.TwitterHandle]("wrong")
+scala> RefType.applyRefM[refinements.Name]("Peter Mortier")
+res19: refinements.Name = Peter Mortier
+```
+
+--
+
+```scala
+scala> RefType.applyRefM[refinements.TwitterHandle]("wrong")
+<console>:25: error: Predicate failed: "wrong".startsWith("@").
+       RefType.applyRefM[refinements.TwitterHandle]("wrong")
+                                                   ^
 ```
 
 ---
 # Refining runtime values
 
-Most of the time however we won't have literals available
-
-* Refine using the predicate:
+Most of the time however we don't have literals available
 
 ```scala
-import eu.timepit.refined.refineV
-val name: String = "Peter Mortier"
-val result: Either[String, refinements.Name] = refineV[NonEmpty](name)
+scala> val name: String = "Peter Mortier"
+name: String = Peter Mortier
+
+scala> RefType.applyRef[refinements.Name](name)
+res21: Either[String,refinements.Name] = Right(Peter Mortier)
 ```
+
 --
-* Refine using the refined type:
 
 ```scala
-val handle: String = "wrong"
-val result: Either[String, refinements.TwitterHandle] =
-        RefType.applyRef[refinements.TwitterHandle](handle)
+scala> val handle: String = "wrong"
+handle: String = wrong
+
+scala> RefType.applyRef[refinements.TwitterHandle](handle)
+res22: Either[String,refinements.TwitterHandle] = Left(Predicate failed: "wrong".startsWith("@").)
 ```
+
 ---
 # Refinement recap
 
-Using **Predicate**
+<!--Using **Predicate**-->
 
-|                |                  |
-| -------------  | ---------------                  |
-| compile time   | `eu.timepit.refined.refineMV[P]` |
-| runtime        | `eu.timepit.refined.refineV[P]`  |
-<br/>
+<!--|                |                  |-->
+<!--| -&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;  | -&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;                  |-->
+<!--| compile time   | `eu.timepit.refined.refineMV[P]` |-->
+<!--| runtime        | `eu.timepit.refined.refineV[P]`  |-->
+<!--<br/>-->
 
 Using **Refined type**
 
-|                |       |
+|                |                                  |
 | -------------  | ---------------                  |
 | compile time   | `eu.timepit.refined.api.RefType.applyRefM[RT]` |
 | runtime        | `eu.timepit.refined.api.RefType.applyRef[RT]`  |
@@ -659,7 +657,7 @@ import eu.timepit.refined.boolean.{AllOf, Not, Or, And}
 import eu.timepit.refined.string.{MatchesRegex, StartsWith}
 import eu.timepit.refined.W
 import eu.timepit.refined.char.LetterOrDigit
-import eu.timepit.refined.collection.{MaxSize, Tail}
+import eu.timepit.refined.collection.{NonEmpty, MaxSize, Tail}
 import eu.timepit.refined.generic.Equal
 import shapeless.::
 import shapeless.HNil
@@ -689,7 +687,10 @@ declarative way to specify my validations
 --
 
 * We'll use Slick to retrieve/store Developers from an SQL database
-* We need to map our Developer case class from/to a DB table
+
+--
+
+* We need to map our Developer case class from/to a DB table using Slick' DSL
 
 --
 
@@ -720,6 +721,7 @@ Slick abstracts over these differences with profiles.
 
 https://stackoverflow.com/questions/31849946/scala-slick-table-tag
 
+only difference with non-refined types: is column[XXX]
 
 ---
 # Standard mappings don't work
@@ -767,8 +769,11 @@ implicit val twitterMapping = MappedColumnType.base[TwitterHandle, String](
 
 This will protect you from reading DB rows, which don't pass the predicate
 ???
+
 Refined.unsafeApply lifts your base type to a refined type without running any validations
+
 Use with extreme caution
+
 ---
 # Custom Slick mappings
 
@@ -780,6 +785,10 @@ val db = Database.forURL(jdbcUrl, driver = "org.h2.Driver")
 
 db.run(developers.insert(developer))
 ```
+???
+A Database object encapsulates the resources that are required to connect to a specific database.
+
+This can be just a number of connection parameters but in most cases it includes a connection pool and a thread pool.
 
 --
 However slick queries are still a problem!
@@ -798,9 +807,6 @@ Sigh! We might just as well give-up and go back using unrefined types
 db.run(developers.filter(_.twitter.asInstanceOf[Rep[String]].like("%kwa%")).result)
 ```
 
-???
-A Database object encapsulates the resources that are required to connect to a specific database.
-This can be just a number of connection parameters but in most cases it includes a connection pool and a thread pool.
 
 ---
 # Integration library for Refined and Slick
@@ -816,7 +822,7 @@ libraryDependencies += "be.venneborg" %% "slick-refined" % "0.1.0"
 
 [slick-refined](https://github.com/kwark/slick-refined) provides:
 
-* mapping support for Refined types
+* boilerplate-free mapping support for Refined types
 
 * extension methods to enable SQL operations on lifted `Rep[RefinedType]`
 
@@ -896,6 +902,8 @@ db.run(sqlu"""UPDATE DEVELOPERS SET NAME = 'Peter DM Mortier'
 
 ### Let's use Play Json
 
+--
+
 ```scala
 import play.api.libs.json.Json
 
@@ -903,6 +911,13 @@ implicit val developerFormat = Json.format[Developer]
 
 Json.toJson(Developer("Peter Mortier", "@kwarkk"))
 ```
+
+???
+
+Play uses a macro to inspect the Developer case class
+
+and for every member of case class will try find a JSON formatter
+
 --
 ```scala
 No instance of play.api.libs.json.Format is available
@@ -912,9 +927,6 @@ No instance of play.api.libs.json.Format is available
             eu.timepit.refined.boolean.AllOf[shapeless.$colon$colon[eu.timepit.refined.string.StartsWith[java.lang.String], shapeless.$colon$colon[eu.timepit.refined.collection.Size[eu.timepit.refined.boolean.Not[eu.timepit.refined.numeric.Greater[scala.Int]]], shapeless.$colon$colon[eu.timepit.refined.boolean.Not[eu.timepit.refined.string.MatchesRegex[java.lang.String]], shapeless.$colon$colon[eu.timepit.refined.boolean.Not[eu.timepit.refined.string.MatchesRegex[java.lang.String]], shapeless.$colon$colon[eu.timepit.refined.collection.Tail[eu.timepit.refined.boolean.Or[eu.timepit.refined.boolean.Or[eu.timepit.refined.char.Letter, eu.timepit.refined.char.Digit], eu.timepit.refined.generic.Equal[scala.Char]]], shapeless.HNil]]]]]]]
 in the implicit scope (Hint: if declared in the same file, make sure it's declared before)
 ```
-???
-Play uses a macro to inspect the Developer case class
-and for every member of class will try find a JSON formatter
 ---
 # Manual Json Format
 
@@ -937,6 +949,7 @@ implicit val twitterHandleFormat = new Format[TwitterHandle] {
 ```
 --
 * Reasonably easy code to understand/write
+
 * But lots of boilerplate if we need to write this for every refined type
 
 ---
@@ -978,7 +991,8 @@ libraryDependencies += "be.venneborg" %% "play-refined" % "0.1.0"
 --
 
 [play-refined](https://github.com/kwark/play-refined) provides:
-* JSON serialization/deserialization support for refined types
+
+* boilerplate-free JSON serialization/deserialization support for refined types
 
 * Form binding/unbinding for refined types
 
@@ -1021,6 +1035,7 @@ developerForm.
 ???
 Uniform validation across json/forms
 ---
+exclude: true
 # Extension methods
 
 * What if I need to perform operations on Refined types?
@@ -1097,12 +1112,13 @@ use scalacheck to check validate your assumptions
 
 * Validation error messages are not always clear: `Empty did not fail`
 
-
-
 ???
 implicit search is involved + inductive proofs are involved
+
 https://scastie.scala-lang.org/kwark/0v3U5OtSSlCypBxeCJoLrA
+
 https://github.com/fthomas/refined/blob/master/modules/scalaz/jvm/src/test/scala-2.12/eu/timepit/refined/scalaz/RefineJavapSpec.scala
+
 opaque types SIP
 
 ---
@@ -1110,9 +1126,9 @@ opaque types SIP
 
 * Typesafety++
 
-* Uniform, declarative validation logic
+* Uniform, declarative validation
 
-* Refining literal values
+* compile time refining literal values
 
 
 > *Typesafety for nothing, validation for free*
@@ -1165,6 +1181,7 @@ exclude: true
 * [Leif Wickland, Defusing the configuration time bomb with PureConfig and Refined](https://www.youtube.com/watch?v=NjqRi-cF3-g)
 
 ---
+exlude: true
 class: center, middle
 
 .image-half[![Static typing](./degoes_tweet.png)]
