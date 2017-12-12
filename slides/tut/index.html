@@ -293,7 +293,7 @@ import eu.timepit.refined.W
 
 object refinements {
 
-    type Name = String Refined NonEmpty
+    type Name = Refined[String, NonEmpty]
 
     type TwitterHandle = String Refined StartsWith[W.`"@"`.T]
 
@@ -303,6 +303,8 @@ object refinements {
 ```
 ???
 point out base type and predicate
+
+infix notation for readability
 
 make good use of a type alias
 
@@ -338,7 +340,9 @@ Answer is 4:
 
 singleton type is a type inhabited by a single value
 
-Any (top type), AnyRef (because it is a reference type, String and the actual value is also a type)
+Any (top type), AnyRef (because String is also a reference type)
+
+String and the actual value is also a type
 
 --
 
@@ -393,11 +397,11 @@ scala>"Peter Mortier": refinements.Name
 res0: refinements.Name = Peter Mortier
 ```
 ???
-Let's see if Refinement types can address our concerns:
-
-literal values can be automatically converted to refined type
+Let's see if Refinement types can address our concerns
 
 validation logic is declarative (we didn't write any actual validation code)
+
+literal values can be automatically converted to refined type
 
 --
 
