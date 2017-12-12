@@ -317,7 +317,7 @@ predicate with a value as a type parameters
 ---
 # Literal based singleton types .image-200[![Pop quiz](./iStock_71171629_SMALL.jpg)]
 
-Pop quiz: How many types has the literal: `"foo"` ?
+Pop quiz: How many types does the value: `"foo"` belong to?
 
 --
 
@@ -605,6 +605,7 @@ In package `eu.timepit.refined.boolean`
 | `OneOf[PS]`  | exclusive disjunction of all predicates in `PS`         |
 
 ---
+exclude: true
 # Predefined Refined types
 
 * `eu.timepit.refined.types.char`: `LowerCaseChar`, `UpperCaseChar`
@@ -628,7 +629,7 @@ Our predicate for `TwitterHandle` is not precise enough.
 
 According to [Twitter's support page](https://support.twitter.com/articles/101299#error):
 
-* Usernames containing the words Twitter or Admin cannot be claimed.
+* Usernames containing the words 'Twitter' or 'Admin' cannot be claimed.
 * Your username cannot be longer than 15 characters. (not including '@')
 * A username can only contain alphanumeric characters (letters A-Z, numbers 0-9) with the exception of underscores
 
@@ -822,7 +823,7 @@ trait MyRefinedSlickProfile extends H2Profile
 object MyRefinedSlickProfile extends MyRefinedSlickProfile
 ```
 ???
-We need to extend the default profile
+We need to extend the default H2Profile
 If you ever worked with slick-pg, extension library for Slick and postgres
 https://github.com/scala/bug/issues/10477
 
@@ -858,6 +859,7 @@ Retrieving a developer from the DB using a slick query
 db.run(developers.filter(_.twitter.like("%kwa%")).result)
 ```
 ---
+exclude: true
 # Plain SQL query support
 
 > *As an alternative to Scala queries you can write queries and other database statements in SQL. This is done with string interpolators.*
@@ -921,6 +923,8 @@ implicit val twitterHandleFormat = new Format[TwitterHandle] {
 * But lots of boilerplate if we need to write this for every refined type
 
 ---
+exclude: true
+
 # Manual Form binding
 
 ```scala
@@ -981,7 +985,7 @@ Json.
 ```
 
 --
-
+exclude: true
 ```
 import improved_refinements._
 import be.venneborg.refined.play.RefinedForms._
@@ -1006,7 +1010,7 @@ Uniform validation across json/forms
 
 --
 
-* Use 'XXXX my library' pattern to decorate types/classes with additional methods
+* Use '<del>Pimp</del> my library' pattern to decorate types/classes with additional methods
 
 --
 
@@ -1034,9 +1038,6 @@ import eu.timepit.refined.types.numeric._
 object RefinedIntOps {
 
   implicit class PosIntOps(val p: PosInt) {
-
-    def minus(that: PosInt): Option[PosInt] =
-        RefType.applyRef[PosInt](p.value - that.value).toOption
 
     def unsafeAdd(that: PosInt): PosInt =
         Refined.unsafeApply(p.value + that.value)
@@ -1097,10 +1098,10 @@ opaque types SIP
 * Refining literal values
 
 
-
 > *Typesafety for nothing, validation for free*
 
 ---
+exclude: true
 # Alternatives
 
 * [Bond](https://github.com/fwbrasil/bond)
