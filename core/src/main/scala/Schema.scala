@@ -27,7 +27,7 @@ object Schema {
     def * = (name, twitter) <> (Developer.tupled, Developer.unapply)
   }
 
-  implicit val postIntMapping = MappedColumnType.base[PosInt, Int](
+  implicit val posIntMapping = MappedColumnType.base[PosInt, Int](
     _.value, Refined.unsafeApply
   )
 

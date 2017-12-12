@@ -19,6 +19,10 @@
           float: right;
       }
 
+      .image-600 img {
+          width: 600px;
+      }
+
       .image-half img {
           width: 70%;
       }
@@ -40,8 +44,9 @@ background-image: url(background.jpg)
 ## Peter Mortier
 ## December 2017
 
-GitHub: [@kwark](https://github.com/kwark) /
-Twitter: [@kwarkk](https://twitter.com/kwarkk)
+<span style="color:white">GitHub: [@kwark](https://github.com/kwark) /
+    Twitter: [@kwarkk](https://twitter.com/kwarkk)</span>
+
 
 ---
 
@@ -63,12 +68,17 @@ Interested in scala through [Functional Programming Principles in Scala](https:/
 # Agenda
 
 * Stringly typed
+
 * Smart constructors
+
 * Taking it to the type level
-* Refined types in practice
+
+* Introducing Refined
+
 * Slick integration
+
 * Play integration
-* Demo
+
 * Extension methods
 
 
@@ -84,6 +94,8 @@ Interested in scala through [Functional Programming Principles in Scala](https:/
 * A `String` can *represent* anything
 * A `String` can *contain* anything
 
+--
+
 ```scala
 final case class Developer(name: String, twitterHandle: String)
 
@@ -91,6 +103,18 @@ Developer("Peter", "@kwarkk") // ok
 
 Developer("@kwarkk", "Peter") // Oops, we've got a bug!
 ```
+
+???
+A pun on strongly typed
+
+represent: URL, a first name, an authorization token, ...
+contain: nothing (empty string), entire contents of the bible
+
+Not only strings, but also APIs that rely on Int or Long
+
+Why do we keep on using them:
+baked into the language (every API supports them)
+types like String come with a whole lot of useful methods: concat, toUppercase, ...
 
 ---
 # Type aliases to the rescue ?
@@ -108,6 +132,13 @@ Developer(name, twitterHandle) // ok
 
 Developer(twitterHandle, name) // Again, we've got a bug
 ```
+???
+Try a solution using a type alias
+type aliases don't work for this
+type aliases are great:
+        if you have a complicated type and want to
+        we'll see a good use for using them later on
+
 ---
 # Value classes to the rescue ?
 
@@ -117,7 +148,7 @@ final class TwitterHandle (val value: String) extends AnyVal
 
 final case class Developer(name: Name, twitterHandle: TwitterHandle)
 ```
-And now we finally can't switch arguments anymore !
+And now we can't switch arguments anymore !
 
 ```scala
 scala> Developer(new TwitterHandle("@kwarkk"), new Name("Peter"))
@@ -133,13 +164,13 @@ scala> Developer(new TwitterHandle("@kwarkk"), new Name("Peter"))
                                                ^
 ```
 ???
-
+value class: class with single parameter, which extends AnyVal
 https://stackoverflow.com/questions/34561614/should-i-use-the-final-modifier-when-declaring-case-classes
 
 ---
 # Value classes to the rescue ?
 
-But these value classes still contain any `String`:
+But these value classes can still contain any `String`:
 
 ```scala
 // Sigh, yet another bug!
@@ -185,29 +216,45 @@ why a value class instead of a case class: avoids allocation
 
 ```scala
 smart.Developer(
-    smart.Name.fromString("Peter Mortier").get,
+    smart.Name.fromString("Peter Mortier").get, // Ugh! .get
     smart.TwitterHandle.fromString("@kwarkk").get
 )
 ```
 
+--
 * Values are always wrapped in an Option
+
+--
 
 * Even though sometimes we statically know these are valid values
 
+--
+
 * Boilerplate validation logic
+
 
 ---
 #Sidebar: why do we love `Option` so much?
 
+--
+
 * It encodes at the typelevel that a value may be absent
+
+--
 
 * It forces us to explicitly deal with absent value
 
-* No more `NullPointerException`s
+--
 
 * Provides extra type safety
 
-* Would be great if we could achieve the same for f.e. non empty strings
+--
+
+* No more `NullPointerException`s
+
+--
+
+* It would be great if we could achieve the same for: non empty strings or positive ints, ...
 
 
 ---
@@ -217,10 +264,11 @@ smart.Developer(
 
 > *"In type theory, a refinement type is a type endowed with a predicate which is assumed to hold for any element of the refined type."*
 
+
 * Luckily, there already exists a Scala [refined](https://github.com/fthomas/refined) library by Frank Thomas.
 
 ---
-#Refined basics
+#Refinement type  basics
 
 * refinement type =
   <span style="color:#50fa7b">**base type**</span> +
@@ -249,34 +297,47 @@ import eu.timepit.refined.W
 object refinements {
 
     type Name = String Refined NonEmpty
+
     type TwitterHandle = String Refined StartsWith[W.`"@"`.T]
 
     final case class Developer(name: Name, twitterHandle: TwitterHandle)
 
 }
 ```
-
 --
-Some predicates require lifting literals to the type-level
+Some predicates require encoding literals to the type-level
 
-We use [Shapeless Witness](https://github.com/milessabin/shapeless/wiki/Feature-overview:-shapeless-2.0.0#singleton-typed-literals) to achieve this
+We use [Shapeless Witness macro](https://github.com/milessabin/shapeless/wiki/Feature-overview:-shapeless-2.0.0#singleton-typed-literals) to achieve this
 
-```scala
-scala> val x: W.`"foo"`.T = "foo"
-x: String("foo") = foo
-```
+???
+make good use of a type alias
+point out base type and predicate
+predicate with a value as a type parameters
 
 ---
-# Literal based singleton types
+# Literal based singleton types .image-200[![Pop quiz](./iStock_71171629_SMALL.jpg)]
 
-Soon this won't be necessary anymore:
+Pop quiz: How many types has the literal: `"foo"` ?
 
-```scala
-scala> val x: "foo" = "foo"
-x: String = "foo"
-```
+--
 
-You'll be able to just use:
+1, 2, 3, 4, more ?
+
+--
+
+Answer is 4:
+--
+  `String`
+--
+  `Any`
+--
+  `AnyRef`
+--
+  `"foo"`
+
+--
+
+There is a [SIP](http://docs.scala-lang.org/sips/pending/42.type.html) to expose these literal based singleton types
 
 ```scala
 type TwitterHandle = String Refined StartsWith["@"]
@@ -286,6 +347,40 @@ This is already available in:
 * [Dotty](http://dotty.epfl.ch/docs/reference/singleton-types.html)
 * [Typelevel scala (-Yliteral-types)](https://typelevel.org/scala/)
 * [scala 2.12.5 maybe, 2.13 definitely](https://github.com/scala/scala/pull/5310)
+
+???
+
+singleton type is a type inhabited by a single value
+Any (top type), AnyRef (because it is a reference type, String and the actual value is also a type)
+---
+## Try it out by yourself
+
+```scala
+curl -s https://raw.githubusercontent.com/typelevel/scala/typelevel-readme/try-typelevel-scala.sh | bash
+Loading...
+Welcome to the Ammonite Repl 1.0.3
+(Scala 2.12.4-bin-typelevel-4 Java 1.8.0_152)
+If you like Ammonite, please support our development at www.patreon.com/lihaoyi
+@ repl.compiler.settings.YliteralTypes.value = true
+
+@ val x = "foo"
+x: String = "foo"
+
+@ x.isInstanceOf[String]
+res2: Boolean = true
+
+@ x.isInstanceOf[Any]
+res3: Boolean = true
+
+@ x.isInstanceOf[AnyRef]
+res4: Boolean = true
+
+@ x.isInstanceOf["foo"]
+res5: Boolean = true
+
+@ x.isInstanceOf["bar"]
+res6: Boolean = false
+```
 
 ---
 # Refining literal values at compile time
@@ -297,13 +392,19 @@ scala>"Peter Mortier": refinements.Name
 res0: refinements.Name = Peter Mortier
 ```
 
-Invalid literals => compilation error
+--
+
+Invalid literal => compilation error
 
 ```scala
 scala> "foo": refinements.TwitterHandle
 <console>:15: error: Predicate failed: "foo".startsWith("@").
        "foo": refinements.TwitterHandle
 ```
+???
+Let's see if Refinement types can address our concerns:
+literal values can be automatically converted to refined type
+validation logic is declarative (we didn't write any actual validation code)
 
 ---
 #Creating a Developer from literal values is now easier than ever!
@@ -327,6 +428,8 @@ refinements.Developer("@kwarkk", "Peter Mortier") // Does not compile, sweet
 * Refine using the predicate:
 
 ```scala
+import eu.timepit.refined.refineMV
+
 val name: refinements.Name = refineMV[NonEmpty]("Peter Mortier")
 ```
 ```scala
@@ -344,6 +447,7 @@ RefType.applyRefM[refinements.Name]("Peter Mortier")
 ```scala
 RefType.applyRefM[refinements.TwitterHandle]("wrong")
 ```
+
 ---
 # Refining runtime values
 
@@ -352,14 +456,17 @@ Most of the time however we won't have literals available
 * Refine using the predicate:
 
 ```scala
-val result: Either[String, refinements.Name] = refineV[NonEmpty]("Peter Mortier")
+import eu.timepit.refined.refineV
+val name: String = "Peter Mortier"
+val result: Either[String, refinements.Name] = refineV[NonEmpty](name)
 ```
 --
 * Refine using the refined type:
 
 ```scala
+val handle: String = "wrong"
 val result: Either[String, refinements.TwitterHandle] =
-        RefType.applyRef[refinements.TwitterHandle]("wrong")
+        RefType.applyRef[refinements.TwitterHandle](handle)
 ```
 ---
 # Refinement recap
@@ -396,7 +503,9 @@ In package `eu.timepit.refined.char`
 | `LowerCase`    |  checks if a `Char` is a lower case character  |
 | `UpperCase`    |  checks if a `Char` is an upper case character |
 | `Whitespace`   |  checks if a `Char` is white space |
-
+???
+Refined comes with a built-in set of predicates
+Won't go over these in detail, but I'll just point out a couple of them
 ---
 # Numeric predicates
 
@@ -429,7 +538,8 @@ In package `eu.timepit.refined.numeric`
 | `Interval.OpenClosed[L, H]` | checks if number is in the interval (`L`, `H`]   |
 | `Interval.ClosedOpen[L, H]` | checks if number is in the interval [`L`, `H`)   |
 | `Interval.Closed[L, H]`     | checks if number is in the interval [`L`, `H`]   |
-
+???
+Difference between intervals is inclusive/exclusive
 ---
 # String predicates
 In package `eu.timepit.refined.string`
@@ -445,7 +555,9 @@ In package `eu.timepit.refined.string`
 | `Uuid`              | checks if string is a valid UUID                    |
 | `Xml`               | checks if string is valid XML                       |
 | `XPath`             | checks if string is a valid XPath expression        |
-
+???
+StartsWith[S]
+MatchesRegex[S]
 ---
 # Collection predicates
 In package `eu.timepit.refined.collection`
@@ -493,19 +605,6 @@ In package `eu.timepit.refined.boolean`
 | `OneOf[PS]`  | exclusive disjunction of all predicates in `PS`         |
 
 ---
-# Combining predicates
-
-Simple predicates can be combined using the boolean predicates into a more complex predicate.
-
-For example the predicate for `TwitterHandle` is not precise enough.
-
-According to [Twitter's support page](https://support.twitter.com/articles/101299#error):
-
-* Usernames containing the words Twitter or Admin cannot be claimed.
-* Your username cannot be longer than 15 characters.
-* A username can only contain alphanumeric characters (letters A-Z, numbers 0-9) with the exception of underscores
-
----
 # Predefined Refined types
 
 * `eu.timepit.refined.types.char`: `LowerCaseChar`, `UpperCaseChar`
@@ -518,6 +617,20 @@ According to [Twitter's support page](https://support.twitter.com/articles/10129
 
 * `eu.timepit.refined.types.time`: `Month`, `Day`, `Hour`, `Minute`, `Second`, `Millis`
 
+---
+# Combining predicates
+
+Simple predicates can be combined using the boolean predicates into a more complex predicate.
+
+Our predicate for `TwitterHandle` is not precise enough.
+
+--
+
+According to [Twitter's support page](https://support.twitter.com/articles/101299#error):
+
+* Usernames containing the words Twitter or Admin cannot be claimed.
+* Your username cannot be longer than 15 characters. (not including '@')
+* A username can only contain alphanumeric characters (letters A-Z, numbers 0-9) with the exception of underscores
 
 ---
 # Improved `TwitterHandle`
@@ -550,12 +663,17 @@ object improved {
 ```
 
 ???
-Use Shapeless HList to encode a list at the typelevel
+uses Shapeless HList to encode a list at the typelevel
+declarative way to specify my validations
 ---
 # Storing/Retrieving refined values
 
-* We'll use Lightbend's Slick to retrieve/store Developers
-* We need to map our Developer from/to a DB table
+--
+
+* We'll use Slick to retrieve/store Developers from an SQL database
+* We need to map our Developer case class from/to a DB table
+
+--
 
 ```scala
 object Schema {
@@ -573,6 +691,7 @@ object Schema {
 
 }
 ```
+
 ???
 
 http://slick.lightbend.com/doc/3.2.1/concepts.html#profiles:
@@ -604,7 +723,7 @@ It looks like Slick does not know how to map our refined types from/to SQL types
 ---
 # Custom Slick mappings
 
-Let's fix that by writing some mappings
+Let's fix that by writing some custom mappings
 
 ```scala
 import eu.timepit.refined.api.Refined
@@ -616,7 +735,9 @@ implicit val twitterMapping = MappedColumnType.base[TwitterHandle, String](
 ```
 
 `Refined.unsafeApply` is an escape hatch!
+
 --
+
 ```scala
 implicit val twitterMapping = MappedColumnType.base[TwitterHandle, String](
   _.value, v => RefType.applyRef[Name](v) match { 
@@ -627,17 +748,23 @@ implicit val twitterMapping = MappedColumnType.base[TwitterHandle, String](
 ```
 
 This will protect you from reading DB rows, which don't pass the predicate
+???
+Refined.unsafeApply lifts your base type to a refined type without running any validations
+Use with extreme caution
 ---
 # Custom Slick mappings
 
 Now we can store refined values!
 
 ```scala
-val db = Database.forURL("xxxx", driver = "org.h2.Driver")
-db.run(developers += developer)
+val jdbcUrl = "jdbc:h2:mem:test-refined;DB_CLOSE_DELAY=-1"
+val db = Database.forURL(jdbcUrl, driver = "org.h2.Driver")
+
+db.run(developers.insert(developer))
 ```
 
-But custom queries are still a problem!
+--
+However slick queries are still a problem!
 
 ```scala
 db.run(developers.filter(_.twitter.like("%kwa%")).result)
@@ -647,6 +774,7 @@ db.run(developers.filter(_.twitter.like("%kwa%")).result)
 ```
 
 Sigh! We might just as well give-up and go back using unrefined types
+--
 
 ```scala
 db.run(developers.filter(_.twitter.asInstanceOf[Rep[String]].like("%kwa%")).result)
@@ -660,15 +788,20 @@ This can be just a number of connection parameters but in most cases it includes
 # Integration library for Refined and Slick
 
 * avoids boilerplate
-* avoids asInstanceOf[Rep[xxx]]
+* avoids `asInstanceOf[Rep[xxx]]`
 
 ```scala
 libraryDependencies += "be.venneborg" %% "slick-refined" % "0.1.0"
 ```
 
+--
+
 [slick-refined](https://github.com/kwark/slick-refined) provides:
+
 * mapping support for Refined types
+
 * extension methods to enable SQL operations on lifted `Rep[RefinedType]`
+
 * support for mapping results from plain SQL queries
 
 ---
@@ -689,6 +822,8 @@ trait MyRefinedSlickProfile extends H2Profile
 object MyRefinedSlickProfile extends MyRefinedSlickProfile
 ```
 ???
+We need to extend the default profile
+If you ever worked with slick-pg, extension library for Slick and postgres
 https://github.com/scala/bug/issues/10477
 
 ---
@@ -729,13 +864,13 @@ db.run(developers.filter(_.twitter.like("%kwa%")).result)
 
 <br/>
 ```scala
-import _root_.be.venneborg.refined.RefinedPlainSql._
+import be.venneborg.refined.RefinedPlainSql._
 
 db.run(sql"""SELECT NAME FROM DEVELOPERS
     WHERE TWITTER LIKE '%rk'""".as[Name])
 
 db.run(sqlu"""UPDATE DEVELOPERS SET NAME = 'Peter DM Mortier'
-    WHERE TWITTER = '"@kwarkk'""")
+    WHERE TWITTER = '@kwarkk'""")
 ```
 ---
 # Json serialization
@@ -758,6 +893,9 @@ No instance of play.api.libs.json.Format is available
             eu.timepit.refined.boolean.AllOf[shapeless.$colon$colon[eu.timepit.refined.string.StartsWith[java.lang.String], shapeless.$colon$colon[eu.timepit.refined.collection.Size[eu.timepit.refined.boolean.Not[eu.timepit.refined.numeric.Greater[scala.Int]]], shapeless.$colon$colon[eu.timepit.refined.boolean.Not[eu.timepit.refined.string.MatchesRegex[java.lang.String]], shapeless.$colon$colon[eu.timepit.refined.boolean.Not[eu.timepit.refined.string.MatchesRegex[java.lang.String]], shapeless.$colon$colon[eu.timepit.refined.collection.Tail[eu.timepit.refined.boolean.Or[eu.timepit.refined.boolean.Or[eu.timepit.refined.char.Letter, eu.timepit.refined.char.Digit], eu.timepit.refined.generic.Equal[scala.Char]]], shapeless.HNil]]]]]]]
 in the implicit scope (Hint: if declared in the same file, make sure it's declared before)
 ```
+???
+Play uses a macro to inspect the Developer case class
+and for every member of class will try find a JSON formatter
 ---
 # Manual Json Format
 
@@ -816,18 +954,19 @@ implicit val twitterHandleFormatter = new Formatter[TwitterHandle] {
 ```scala
 libraryDependencies += "be.venneborg" %% "play-refined" % "0.1.0"
 ```
+--
 
 [play-refined](https://github.com/kwark/play-refined) provides:
 * JSON serialization/deserialization support for refined types
 
+* Form binding/unbinding for refined types
+
 * Path/Query binding for refined types:<br/>
-    for example `/developers/:handle => controller.lookup(handle)`
+    `/developers/:handle => controller.lookup(handle)`
 
-* Form binding for refined types
-
-* translation of Refined error messages to standard Play error codes
+* Translation of Refined error messages to standard Play error codes
 ---
-No more boilerplate
+# No more boilerplate
 
 ```scala
 import improved_refinements._
@@ -839,9 +978,10 @@ implicit val developerFormat = Json.format[Developer]
 Json.
   parse("""{ "name": "Peter Mortier", "twitterHandle": "@kwarkk" }""").
   as[Developer]
-
 ```
+
 --
+
 ```
 import improved_refinements._
 import be.venneborg.refined.play.RefinedForms._
@@ -857,48 +997,52 @@ developerForm.
     bind(Map("name" -> "Peter Mortier", "handle" -> "@kwarkk"))
 
 ```
----
-class: center, middle
-
-# Demo
-
-https://github.com/kwark/play-scala-slick-example
-
-### Introducing refined to existing CRUD application
-
 ???
-groll initial
-run
-form entry
-show json serialization
-
-
+Uniform validation across json/forms
 ---
 # Extension methods
 
 * What if I need to perform operations on Refined types?
 
+--
+
 * Use 'XXXX my library' pattern to decorate types/classes with additional methods
+
+--
 
 * Test your assumptions using property based testing: `refined-scalacheck`
 
 ---
 ```scala
-import eu.timepit.refined.types.numeric._
 import eu.timepit.refined.types.string._
 
-object RefinedOps {
+object RefinedStringOps {
+
+  implicit class NonEmptyStringOps(val s: NonEmptyString) {
+    def concat(that: NonEmptyString): NonEmptyString =
+        Refined.unsafeApply(s.value.concat(that.value))
+  }
+
+}
+```
+
+--
+
+```scala
+import eu.timepit.refined.types.numeric._
+
+object RefinedIntOps {
 
   implicit class PosIntOps(val p: PosInt) {
 
     def minus(that: PosInt): Option[PosInt] =
         RefType.applyRef[PosInt](p.value - that.value).toOption
 
-    def add(that: PosInt): Option[PosInt] =
-        RefType.applyRef[PosInt](p.value + that.value).toOption
-
     def unsafeAdd(that: PosInt): PosInt =
         Refined.unsafeApply(p.value + that.value)
+
+    def add(that: PosInt): Option[PosInt] =
+        RefType.applyRef[PosInt](p.value + that.value).toOption
 
   }
 
@@ -910,27 +1054,51 @@ use scalacheck to check validate your assumptions
 ---
 # Refined gotcha's
 
+--
 * Intellij squiggly lines
 
-* Watch-out when using infix type notation! Use `String Refined (And[XXX, YYY])`
+.image-half[![Witness](./witness_macro_intellj.png)]
+.image-half[![Macro](refined_auto_macro_intellij.png)]
+
+--
+* Watch-out when using infix type notation!
+
+<del>`String Refined XXX And YYY`</del><br/>
+`String Refined And[XXX, YYY]`<br/>
+`String Refined (XXX And YYY)`<br/>
+
+--
 
 * Watch your compile times!
 
+--
+
 * Refined primitives are always boxed
 
-* Validation error messages are not always clear
+--
+
+* Validation error messages are not always clear: `Empty did not fail`
+
+
 
 ???
+implicit search is involved + inductive proofs are involved
 https://scastie.scala-lang.org/kwark/0v3U5OtSSlCypBxeCJoLrA
 https://github.com/fthomas/refined/blob/master/modules/scalaz/jvm/src/test/scala-2.12/eu/timepit/refined/scalaz/RefineJavapSpec.scala
+opaque types SIP
 
 ---
 # Refined advantages
 
-* additional typesafety
-* uniform validation logic
+* Typesafety++
 
-> Typesafety for nothing, validation for free
+* Uniform, declarative validation logic
+
+* Refining literal values
+
+
+
+> *Typesafety for nothing, validation for free*
 
 ---
 # Alternatives
@@ -973,7 +1141,9 @@ https://github.com/fthomas/refined/blob/master/modules/scalaz/jvm/src/test/scala
 # Refined presentations
 
 * [Decorate your types with refined - Frank Thomas](https://www.youtube.com/watch?v=zExb9x3fzKs&t=1501s)
+
 * [Refined types for validated configurations = Viktor Lövgren](https://www.youtube.com/watch?v=C3ciegxMAqA)
+
 * [Leif Wickland, Defusing the configuration time bomb with PureConfig and Refined](https://www.youtube.com/watch?v=NjqRi-cF3-g)
 
 ---
@@ -991,6 +1161,8 @@ Presentation available at https://kwark.github.io/refined-in-practice
 This presentation will be soon available on the Scala eXchange London website at the following link: https://skillsmatter.com/conferences/8784-scala-exchange-2017#skillscasts
 
 ## Questions?
+
+You can always find me later in the refined gitter room: https://gitter.im/fthomas/refined
 
 
  </textarea>
