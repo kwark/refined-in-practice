@@ -227,10 +227,17 @@ object smart {
 
 }
 ```
---
-
 ???
-https://docs.scala-lang.org/overviews/core/value-classes.html
+make constructor of value class private
+
+create a companion object with a factory method
+
+that validates the input string
+
+and either returns None if input is invalid
+
+or Some if it is valid
+
 
 ---
 # Smart constructors
@@ -240,6 +247,7 @@ import smart._
 
 val maybeName: Option[Name]            = Name.fromString("Peter Mortier")
 val maybeHandle: Option[TwitterHandle] = TwitterHandle.fromString("@kwarkk")
+val invalidHandle                      = TwitterHandle.fromString("foo")
 
 Developer(
     maybeName.get, // Ugh! .get
@@ -263,6 +271,10 @@ Developer(
 
 * Even though sometimes we statically know these are valid values
 
+???
+I have got a literal "@kwarkk" value in my scala source code.
+
+I can see that it is valid, surely the compiler should be just as smart
 --
 
 * Boilerplate validation logic
