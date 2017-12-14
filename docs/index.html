@@ -308,12 +308,11 @@ exlude: true
 ---
 #Idea: encode validations at the typelevel .image-200[![Idea](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRRFVNLa-nEYwfufPyCpabTcrcChYY9q0aVuBLWtCMU5IMyE7ZF0g)]
 
+
 * This is the basic idea behind [refinement types](https://en.wikipedia.org/wiki/Refinement_%28computing#29#Refinement_types):
 
 > *"In type theory, a refinement type is a type endowed with a predicate which is assumed to hold for any element of the refined type."*
 
-
-* Luckily, there already exists a Scala [refined](https://github.com/fthomas/refined) library by Frank Thomas.
 
 ---
 #Refinement type  basics
@@ -334,7 +333,9 @@ Examples:
 * `Name          = String + (∀ s => s.nonEmpty)`
 
 ---
-# Refined example
+# Refined
+
+There already exists a Scala [refined](https://github.com/fthomas/refined) library by Frank Thomas.
 
 ```scala
 import eu.timepit.refined.api.Refined
