@@ -758,7 +758,7 @@ declarative way to specify my validations
 
 --
 
-* We need to map our Developer case class from/to a DB table using Slick' DSL
+* We need to map our Developer case class from/to a DB table using Slick's DSL
 
 --
 
@@ -781,11 +781,25 @@ object Schema {
 
 ???
 
+for this we create a Schema object
+
+first we'll import the slick profile
+
+Even though slick uses JDBC underneath, there are still difference in SQL dialect and the way different databases encode data types,
+so slick needs to know which database you are using
+
+Next, we do the actually mapping by creating a class which extends the Table
+
+finally we'll create a TableQuery, which will allow us to interact with actual database
+
+
 http://slick.lightbend.com/doc/3.2.1/concepts.html#profiles:
 Even when using a standard interface for database drivers like JDBC
 there are many differences between databases in the SQL dialect they understand,
 the way they encode data types, or other idiosyncracies.
 Slick abstracts over these differences with profiles.
+
+
 
 https://stackoverflow.com/questions/31849946/scala-slick-table-tag
 
@@ -1051,10 +1065,10 @@ implicit val twitterHandleFormatter = new Formatter[TwitterHandle] {
 }
 ```
 ---
-# Refined-play integration library
+# Play-refined integration library
 
 ```scala
-libraryDependencies += "be.venneborg" %% "play-refined" % "0.1.0"
+libraryDependencies += "be.venneborg" %% "play26-refined" % "0.1.0"
 ```
 --
 
@@ -1109,14 +1123,15 @@ exclude: true
 * What if I need to perform operations on Refined types?
 
 --
-
+exclude: true
 * Use '<del>Pimp</del> my library' pattern to decorate types/classes with additional methods
 
 --
-
+exclude: true
 * Test your assumptions using property based testing: `refined-scalacheck`
 
 ---
+exclude: true
 ```scala
 import eu.timepit.refined.types.string._
 
@@ -1131,7 +1146,7 @@ object RefinedStringOps {
 ```
 
 --
-
+exclude: true
 ```scala
 import eu.timepit.refined.types.numeric._
 
