@@ -113,7 +113,7 @@ Why do we keep on using them:
 
 baked into the language (every API supports them)
 
-types like String come with a whole lot of useful methods: concat, toUppercase, ...
+types like String come with a bunch of useful methods: concat, toUppercase, ...
 
 --
 
@@ -124,7 +124,16 @@ Developer("Peter", "@kwarkk") // ok
 
 Developer("@kwarkk", "Peter") // Oops, we've got a bug!
 ```
+???
+Let's see an example in code of a stringly typed API
 
+Here we have a case class representing a Developer in our domain
+
+And our developer has a name and a twitterhandle (which is his or hers twitter username)
+
+I can now simply construct a developer
+
+But if I accidently switch the arguments, I have introduced a bug
 
 ---
 # Type aliases to the rescue ?
@@ -143,7 +152,9 @@ Developer(name, twitterHandle) // ok
 Developer(twitterHandle, name) // Again, we've got a bug
 ```
 ???
-Try a solution using a type alias
+Let's see if we can do better.
+
+First we'll try a solution using type aliases
 
 type aliases don't work for this
 
@@ -151,7 +162,7 @@ type aliases are great
 
 if you have a complicated type and want to avoid retyping it over and over again, or clear up your method signatures
 
-we'll see a good use for using them later on
+we'll see a great use of them later on
 
 ---
 # Value classes to the rescue ?
