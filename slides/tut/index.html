@@ -255,6 +255,13 @@ Developer(
     maybeHandle.get
 )
 ```
+???
+So, we can't switch the arguments anymore
+
+And we also can't create invalid instances of our value classes
+
+But creating a developer has become slightly more cumbersome
+
 --
 
 ```tut:silent
@@ -263,6 +270,19 @@ Developer(
   case _                          => None
 }
 ```
+
+```scala
+import cats.Apply
+import cats.implicits._
+
+Apply[Option].map2(maybeName, maybeHandle)(Developer.apply _)
+
+(maybeName, invalidHandle).mapN(Developer.apply _)
+
+```
+???
+
+smart constructors are great, but I do have a couple of concerns:
 
 --
 
