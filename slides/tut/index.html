@@ -179,7 +179,7 @@ Developer(new Name("@kwarkk"), new TwitterHandle("Peter"))
 ---
 # Add validation with smart constructors
 
-```tut:silent
+```tut:silent:reset
 object smart {
 
   final class TwitterHandle private(val value: String) extends AnyVal
@@ -204,21 +204,36 @@ object smart {
 
 }
 ```
+--
 
 ???
 https://docs.scala-lang.org/overviews/core/value-classes.html
 
 ---
-# Smart constructors are not perfect
+# Smart constructors
 
 ```tut:silent
-smart.Developer(
-    smart.Name.fromString("Peter Mortier").get, // Ugh! .get
-    smart.TwitterHandle.fromString("@kwarkk").get
+import smart._
+
+val maybeName: Option[Name]            = Name.fromString("Peter Mortier")
+val maybeHandle: Option[TwitterHandle] = TwitterHandle.fromString("@kwarkk")
+
+Developer(
+    maybeName.get, // Ugh! .get
+    maybeHandle.get
 )
+```
+--
+
+```tut:silent
+(maybeName, maybeHandle) match {
+  case (Some(name), Some(handle)) => Some(Developer(name, handle))
+  case _                          => None
+}
 ```
 
 --
+
 * Our values are always wrapped in an Option
 
 --
@@ -231,6 +246,7 @@ smart.Developer(
 
 
 ---
+exlude: true
 #Sidebar: why do we love `Option` so much?
 
 --
@@ -283,7 +299,7 @@ Examples:
 * `Name          = String + (∀ s => s.nonEmpty)`
 
 ---
-#Refined example
+# Refined example
 
 ```tut:silent
 import eu.timepit.refined.api.Refined
@@ -302,16 +318,21 @@ object refinements {
 }
 ```
 ???
+
+Refined library provides us with a type constructor
+
+Type that takes two type parameters and constructs a new type
+
 point out base type and predicate
 
 infix notation for readability
 
-make good use of a type alias
+make good use of a type alias: avoids repeated typing and makes are code more readable
 
 predicate with a value as a type parameters
 
 --
-Some predicates require encoding literals to the type-level
+Some predicates require encoding literals at the type-level
 
 We use [Shapeless Witness macro](https://github.com/milessabin/shapeless/wiki/Feature-overview:-shapeless-2.0.0#singleton-typed-literals) to achieve this
 
@@ -338,9 +359,9 @@ Answer is 4:
 
 ???
 
-singleton type is a type inhabited by a single value
-
 Any (top type), AnyRef (because String is also a reference type)
+
+singleton type is a type inhabited by a single value
 
 String and the actual value is also a type
 
@@ -974,7 +995,7 @@ libraryDependencies += "be.venneborg" %% "play-refined" % "0.1.0"
 
 * boilerplate-free JSON serialization/deserialization support for refined types
 
-* Form binding/unbinding for refined types
+* boilerplate-free form binding/unbinding for refined types
 
 * Path/Query binding for refined types:<br/>
     `/developers/:handle => controller.lookup(handle)`
@@ -1082,15 +1103,18 @@ use scalacheck to check validate your assumptions
 
 --
 
-* Watch your compile times!
-
---
-
 * Refined primitives are always boxed
 
 --
 
 * Validation error messages are not always clear: `Empty did not fail`
+
+--
+
+* Watch your compile times!
+
+--
+
 
 ???
 implicit search is involved + inductive proofs are involved
@@ -1104,11 +1128,11 @@ opaque types SIP
 ---
 # Refined advantages
 
-* Typesafety++
+* Typesafety++ (catch bugs at compile time)
 
 * Uniform, declarative validation
 
-* compile time refining literal values
+* compile time refinement of literal values
 
 
 > *Typesafety for nothing, validation for free*
@@ -1159,6 +1183,8 @@ exclude: true
 * [Refined types for validated configurations = Viktor Lövgren](https://www.youtube.com/watch?v=C3ciegxMAqA)
 
 * [Leif Wickland, Defusing the configuration time bomb with PureConfig and Refined](https://www.youtube.com/watch?v=NjqRi-cF3-g)
+
+* Links to even more resources in [Refined wiki](https://github.com/fthomas/refined/wiki/Resources)
 
 ---
 exlude: true
