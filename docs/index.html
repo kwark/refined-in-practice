@@ -280,30 +280,29 @@ I can see that it is valid, surely the compiler should be just as smart
 * Boilerplate validation logic
 
 
----
-exclude: true
-#Sidebar: why do we love `Option` so much?
+<!-- -&#45;&#45;-->
+<!--exclude: true-->
+<!--#Sidebar: why do we love `Option` so much?-->
 
---
+<!--&#45;&#45;-->
 
-* It encodes at the typelevel that a value may be absent
+<!--* It encodes at the typelevel that a value may be absent-->
 
---
+<!--&#45;&#45;-->
 
-* It forces us to explicitly deal with absent value
+<!--* It forces us to explicitly deal with absent value-->
 
---
+<!--&#45;&#45;-->
 
-* Provides extra type safety
+<!--* Provides extra type safety-->
 
---
+<!--&#45;&#45;-->
 
-* No more `NullPointerException`s
+<!--* No more `NullPointerException`s-->
 
---
+<!--&#45;&#45;-->
 
-* It would be great if we could achieve the same for: non empty strings or positive ints, ...
-
+<!--* It would be great if we could achieve the same for: non empty strings or positive ints, ...-->
 
 ---
 #Idea: encode validations at the typelevel .image-200[![Idea](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRRFVNLa-nEYwfufPyCpabTcrcChYY9q0aVuBLWtCMU5IMyE7ZF0g)]
@@ -313,6 +312,12 @@ exclude: true
 
 > *"In type theory, a refinement type is a type endowed with a predicate which is assumed to hold for any element of the refined type."*
 
+???
+So, what if we could take the idea of smart constructors
+
+And encode our validations at the typelevel
+
+A refinement type is just some basic type with a predicate (or a validation rule) which should be true for all valid values.
 
 ---
 #Refinement type  basics
