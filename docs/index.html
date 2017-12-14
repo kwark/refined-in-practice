@@ -1049,3 +1049,238 @@ implicit val twitterHandleFormatter = new Formatter[TwitterHandle] {
     Map[String, String](key -> value.value)
 
 }
+```
+---
+# Refined-play integration library
+
+```scala
+libraryDependencies += "be.venneborg" %% "play-refined" % "0.1.0"
+```
+--
+
+[play-refined](https://github.com/kwark/play-refined) provides:
+
+* boilerplate-free JSON serialization/deserialization support for refined types
+
+* boilerplate-free form binding/unbinding for refined types
+
+* Path/Query binding for refined types:<br/>
+    `/developers/:handle => controller.lookup(handle)`
+
+* Translation of Refined error messages to standard Play error codes
+---
+# No more boilerplate
+
+```scala
+import improved_refinements._
+import be.venneborg.refined.play.RefinedJsonFormats._
+import play.api.libs.json._
+
+implicit val developerFormat = Json.format[Developer]
+
+Json.
+  parse("""{ "name": "Peter Mortier", "twitterHandle": "@kwarkk" }""").
+  as[Developer]
+```
+
+--
+exclude: true
+```
+import improved_refinements._
+import be.venneborg.refined.play.RefinedForms._
+
+val developerForm = Form(
+  mapping(
+    "name"   -> Forms.of[Name],
+    "handle" -> Formsof[TwitterHandle]
+  )(Developer.apply)(Developer.unapply)
+)
+
+developerForm.
+    bind(Map("name" -> "Peter Mortier", "handle" -> "@kwarkk"))
+
+```
+???
+Uniform validation across json/forms
+---
+exclude: true
+# Extension methods
+
+* What if I need to perform operations on Refined types?
+
+--
+
+* Use '<del>Pimp</del> my library' pattern to decorate types/classes with additional methods
+
+--
+
+* Test your assumptions using property based testing: `refined-scalacheck`
+
+---
+```scala
+import eu.timepit.refined.types.string._
+
+object RefinedStringOps {
+
+  implicit class NonEmptyStringOps(val s: NonEmptyString) {
+    def concat(that: NonEmptyString): NonEmptyString =
+        Refined.unsafeApply(s.value.concat(that.value))
+  }
+
+}
+```
+
+--
+
+```scala
+import eu.timepit.refined.types.numeric._
+
+object RefinedIntOps {
+
+  implicit class PosIntOps(val p: PosInt) {
+
+    def unsafeAdd(that: PosInt): PosInt =
+        Refined.unsafeApply(p.value + that.value)
+
+    def add(that: PosInt): Option[PosInt] =
+        RefType.applyRef[PosInt](p.value + that.value).toOption
+
+  }
+
+}
+```
+???
+use scalacheck to check validate your assumptions
+
+---
+# Refined gotcha's
+
+--
+* Intellij squiggly lines
+
+.image-half[![Witness](./witness_macro_intellj.png)]
+.image-half[![Macro](refined_auto_macro_intellij.png)]
+
+--
+* Watch-out when using infix type notation!
+
+<del>`String Refined XXX And YYY`</del><br/>
+`String Refined And[XXX, YYY]`<br/>
+`String Refined (XXX And YYY)`<br/>
+
+--
+
+* Refined primitives are always boxed
+
+--
+
+* Validation error messages are not always clear: `Empty did not fail`
+
+--
+
+* Watch your compile times!
+
+--
+
+
+???
+implicit search is involved + inductive proofs are involved
+
+https://scastie.scala-lang.org/kwark/0v3U5OtSSlCypBxeCJoLrA
+
+https://github.com/fthomas/refined/blob/master/modules/scalaz/jvm/src/test/scala-2.12/eu/timepit/refined/scalaz/RefineJavapSpec.scala
+
+opaque types SIP
+
+---
+# Refined advantages
+
+* Typesafety++ (catch bugs at compile time)
+
+* Uniform, declarative validation
+
+* compile time refinement of literal values
+
+
+> *Typesafety for nothing, validation for free*
+
+---
+exclude: true
+# Alternatives
+
+* [Bond](https://github.com/fwbrasil/bond)
+
+* [scalactic](http://www.scalactic.org/): `PosInt, PozInt`
+
+---
+# Refined integrations
+
+### Configuration
+* [PureConfig](https://github.com/fthomas/refined)
+* [Validated Typesafe Configuration](https://github.com/carlpulley/validated-config)
+* [Ciris](https://github.com/vlovgr/ciris)
+
+### Testing
+* [scalacheck](https://github.com/fthomas/refined)
+
+### Database access
+* [Slick](https://github.com/kwark/slick-refined)
+* [Doobie](https://github.com/tpolecat/doobie)
+* [Anorm](https://github.com/derekmorr/refined-anorm)
+
+---
+# More refined integrations
+
+### Json
+* [Circe](https://github.com/circe/circe)
+* [Argonaut Shapeless](https://github.com/alexarchambault/argonaut-shapeless)
+* [Play Json](https://github.com/lunaryorn/play-json-refined)
+* [Play](https://github.com/kwark/play-refined)
+
+### Other
+* [Monocle](https://github.com/julien-truffaut/Monocle) -- lens library
+* [Decline](https://github.com/bkirwi/decline) -- command line parsing
+* [Quasar](https://github.com/quasar-analytics/quasar) -- NoSql analytics engine
+* [kantan.codecs](https://github.com/nrinaudo/kantan.codecs) -- Codecs f.e. for CSV parsing
+---
+# Refined presentations
+
+* [Decorate your types with refined - Frank Thomas](https://www.youtube.com/watch?v=zExb9x3fzKs&t=1501s)
+
+* [Refined types for validated configurations = Viktor Lövgren](https://www.youtube.com/watch?v=C3ciegxMAqA)
+
+* [Leif Wickland, Defusing the configuration time bomb with PureConfig and Refined](https://www.youtube.com/watch?v=NjqRi-cF3-g)
+
+* Links to even more resources in [Refined wiki](https://github.com/fthomas/refined/wiki/Resources)
+
+---
+exlude: true
+class: center, middle
+
+.image-half[![Static typing](./degoes_tweet.png)]
+
+---
+class: center, middle
+
+# Thanks!
+Code and slides at `kwark/refined-in-practice` on GitHub
+Presentation available at https://kwark.github.io/refined-in-practice
+
+This presentation will be soon available on the Scala eXchange London website at the following link: https://skillsmatter.com/conferences/8784-scala-exchange-2017#skillscasts
+
+## Questions?
+
+You can always find me later in the refined gitter room: https://gitter.im/fthomas/refined
+
+
+ </textarea>
+    <script src="remark-latest.min.js">
+    </script>
+    <script>
+      var slideshow = remark.create({
+          highlightLanguage: 'scala',
+          highlightStyle: 'solarized-light',
+      });
+    </script>
+  </body>
+</html>
