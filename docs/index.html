@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Refined Types in Practice</title>
+    <title>Refinement Types in Practice</title>
     <meta charset="utf-8">
     <style>
       @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
@@ -40,7 +40,7 @@
 class: center, middle
 background-image: url(background.jpg)
 
-# Refined Types In Practice
+# Refinement Types In Practice
 ## <span style="color:white">Peter Mortier</span>
 ## <span style="color:white">December 2017</span>
 
@@ -86,8 +86,6 @@ Pizza was invented by Martin Odersky and he later worked on the java compiler to
 * Slick integration
 
 * Play integration
-
-* Extension methods
 
 
 ---
@@ -160,6 +158,7 @@ we'll see a good use for using them later on
 
 ```scala
 final class Name(val value: String) extends AnyVal
+
 final class TwitterHandle (val value: String) extends AnyVal
 
 final case class Developer(name: Name, twitterHandle: TwitterHandle)
@@ -181,6 +180,12 @@ scala> Developer(new TwitterHandle("@kwarkk"), new Name("Peter"))
 ```
 ???
 value class: class with single parameter, which extends AnyVal
+
+advantage is that compiler will try to avoid to allocating them at runtime
+
+at runtime a Name will still be a string
+
+most of the time
 
 https://stackoverflow.com/questions/34561614/should-i-use-the-final-modifier-when-declaring-case-classes
 
