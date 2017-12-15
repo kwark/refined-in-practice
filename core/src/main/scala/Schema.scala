@@ -24,7 +24,7 @@ object Schema {
     def twitter = column[TwitterHandle]("TWITTER", O.PrimaryKey)
     def name    = column[Name]("NAME")
 
-    def * = (name, twitter) <> (Developer.tupled, Developer.unapply)
+    def * = (name, twitter).mapTo[Developer]
   }
 
   implicit val posIntMapping = MappedColumnType.base[PosInt, Int](

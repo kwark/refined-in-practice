@@ -9,7 +9,7 @@ object RefinedSchema {
     def twitter = column[TwitterHandle]("twitter", O.PrimaryKey)
     def name    = column[Name]("name")
 
-    def * = (name, twitter) <> (Developer.tupled, Developer.unapply)
+    def * = (name, twitter).mapTo[Developer]
   }
 
   val developers = TableQuery[Developers]

@@ -752,7 +752,7 @@ object Schema {
     def twitter = column[TwitterHandle]("twitter", O.PrimaryKey)
     def name    = column[Name]("name")
 
-    def * = (twitter, name) <> (Developer.tupled, Developer.unapply)
+    def * = (twitter, name).mapTo[Developer]
   }
 
   val developers = TableQuery[Developers]
@@ -947,7 +947,7 @@ object RefinedSchema {
     def twitter = column[TwitterHandle]("twitter", O.PrimaryKey)
     def name    = column[Name]("name")
 
-    def * = (name, twitter) <> (Developer.tupled, Developer.unapply)
+    def * = (name, twitter).mapTo[Developer]
   }
 
   val developers = TableQuery[Developers]
