@@ -1148,7 +1148,16 @@ Uniform validation across json/forms
 
 * What if you need to perform operations on Refined types?
 
+???
+
+Lot's of the time the above is enough
+
+You can simply take values from a REST api, refine them at runtime and store them in your database
+
+But sometimes you need to do more with them, like call actual operations on them
+
 --
+
 * Use Typeclass pattern
 
 ---
@@ -1190,7 +1199,8 @@ implicit val refinedPosIntOps = new RefinedIntOps[PosInt] {
 }
 ```
 ???
-use scalacheck to check validate your assumptions
+
+use property-based testing with scalacheck to check your assumptions
 
 ---
 # Refined gotcha's
@@ -1221,6 +1231,7 @@ use scalacheck to check validate your assumptions
 * Watch your compile times!
 
 ???
+
 implicit search is involved + inductive proofs are involved
 
 https://scastie.scala-lang.org/kwark/0v3U5OtSSlCypBxeCJoLrA
@@ -1237,9 +1248,6 @@ opaque types SIP
 * Uniform, declarative validation
 
 * compile time refinement of literal values
-
-
-> *Typesafety for nothing, validation for free*
 
 ---
 exclude: true
@@ -1305,6 +1313,36 @@ Code and slides at `kwark/refined-in-practice` on GitHub
 Presentation available at https://kwark.github.io/refined-in-practice
 
 This presentation will be soon available on the Scala eXchange London website at the following link: https://skillsmatter.com/conferences/8784-scala-exchange-2017#skillscasts
+
+???
+
+Static typing debate is actually pretty silly
+
+I think the more you can prove about your program before you run it, the better of you are
+
+And refinement types help you achieve this
+
+But they do come with a cost
+
+cost of integrating them with other frameworks
+
+cost of typelevel programming
+
+Thanks to:
+
+Frank for creating refined
+
+Miles Sabin for his incredible work on the scala compiler:
+
+driving the literal based singleton spec
+
+improving the implicit search in the compiler
+
+And all other developers that created the awesome integration libraries
+
+And finally I want to thank you for coming to my talk
+
+--
 
 ## Questions?
 
