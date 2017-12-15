@@ -87,6 +87,7 @@ Pizza was invented by Martin Odersky and he later worked on the java compiler to
 
 * Play integration
 
+* Extension methods
 
 ---
 
@@ -738,7 +739,7 @@ declarative way to specify my validations
 
 --
 
-* We need to map our Developer case class from/to a DB table using Slick' DSL
+* We need to map our Developer case class from/to a DB table using Slick's DSL
 
 --
 
@@ -761,11 +762,25 @@ object Schema {
 
 ???
 
+for this we create a Schema object
+
+first we'll import the slick profile
+
+Even though slick uses JDBC underneath, there are still difference in SQL dialect and the way different databases encode data types,
+so slick needs to know which database you are using
+
+Next, we do the actually mapping by creating a class which extends the Table
+
+finally we'll create a TableQuery, which will allow us to interact with actual database
+
+
 http://slick.lightbend.com/doc/3.2.1/concepts.html#profiles:
 Even when using a standard interface for database drivers like JDBC
 there are many differences between databases in the SQL dialect they understand,
 the way they encode data types, or other idiosyncracies.
 Slick abstracts over these differences with profiles.
+
+
 
 https://stackoverflow.com/questions/31849946/scala-slick-table-tag
 
@@ -841,26 +856,33 @@ This can be just a number of connection parameters but in most cases it includes
 --
 However slick queries are still a problem!
 
+`SELECT * FROM developers WHERE twitter like '%k%';`
+
 ```scala
-db.run(developers.filter(_.twitter.like("%kwa%")).result)
+db.run(developers.filter(_.twitter.like("%k%")).result)
 
 [error] value like is not a member of slick.lifted.Rep[improved.TwitterHandle]
 [error]     db.run(developers.filter(_.twitter.like("%kwa%")).result)
 ```
+???
 
-Sigh! We might just as well give-up and go back using unrefined types
+We want to find all developers with a twitter username containing the letter k
+
+We use slick's collection like DSL
+
+Unfortunately this does not compile out of the box
+
 --
 
+Convince the compiler that `twitter` is actually a `Rep[String]`
+
 ```scala
-db.run(developers.filter(_.twitter.asInstanceOf[Rep[String]].like("%kwa%")).result)
+db.run(developers.filter(_.twitter.asInstanceOf[Rep[String]].like("%k%")).result)
 ```
 
 
 ---
 # Integration library for Refined and Slick
-
-* avoids boilerplate
-* avoids `asInstanceOf[Rep[xxx]]`
 
 ```scala
 libraryDependencies += "be.venneborg" %% "slick-refined" % "0.1.0"
@@ -895,7 +917,9 @@ object MyRefinedSlickProfile extends MyRefinedSlickProfile
 ```
 ???
 We need to extend the default H2Profile
+
 If you ever worked with slick-pg, extension library for Slick and postgres
+
 https://github.com/scala/bug/issues/10477
 
 ---
@@ -961,6 +985,7 @@ Json.toJson(Developer("Peter Mortier", "@kwarkk"))
 ```
 
 ???
+We are going to ask play to automaticall derive a Json formatter for our Developer class
 
 Play uses a macro to inspect the Developer case class
 
@@ -995,6 +1020,9 @@ implicit val twitterHandleFormat = new Format[TwitterHandle] {
 
 }
 ```
+???
+create a new Format and implement two methods
+
 --
 * Reasonably easy code to understand/write
 
@@ -1031,10 +1059,10 @@ implicit val twitterHandleFormatter = new Formatter[TwitterHandle] {
 }
 ```
 ---
-# Refined-play integration library
+# Play-refined integration library
 
 ```scala
-libraryDependencies += "be.venneborg" %% "play-refined" % "0.1.0"
+libraryDependencies += "be.venneborg" %% "play26-refined" % "0.1.0"
 ```
 --
 
@@ -1044,7 +1072,7 @@ libraryDependencies += "be.venneborg" %% "play-refined" % "0.1.0"
 
 * boilerplate-free form binding/unbinding for refined types
 
-* Path/Query binding for refined types:<br/>
+* Path/Query binding for refined types in `routes`:<br/>
     `/developers/:handle => controller.lookup(handle)`
 
 * Translation of Refined error messages to standard Play error codes
@@ -1083,49 +1111,45 @@ developerForm.
 ???
 Uniform validation across json/forms
 ---
-exclude: true
 # Extension methods
 
-* What if I need to perform operations on Refined types?
+* What if you need to perform operations on Refined types?
 
 --
-
-* Use '<del>Pimp</del> my library' pattern to decorate types/classes with additional methods
-
---
-
-* Test your assumptions using property based testing: `refined-scalacheck`
+* Use Typeclass pattern
 
 ---
+
 ```tut:silent
 import eu.timepit.refined.types.string._
 
-object RefinedStringOps {
+trait RefinedStringOps[T] {
+  def concat(x: T, y: T): T
+}
 
-  implicit class NonEmptyStringOps(val s: NonEmptyString) {
-    def concat(that: NonEmptyString): NonEmptyString =
-        Refined.unsafeApply(s.value.concat(that.value))
-  }
+implicit val refinedNonEmptyStringOps = new RefinedStringOps[NonEmptyString] {
+
+  override def concat(x: NonEmptyString, y: NonEmptyString): NonEmptyString =
+    Refined.unsafeApply(x.value + y.value)
 
 }
 ```
-
---
-
+---
 ```tut:silent
 import eu.timepit.refined.types.numeric._
 
-object RefinedIntOps {
+trait RefinedIntOps[T] {
+  def unsafeAdd(t1: T, t2: T): T
+  def add(t1: T, t2: T): Option[T]
+}
 
-  implicit class PosIntOps(val p: PosInt) {
+implicit val refinedPosIntOps = new RefinedIntOps[PosInt] {
 
-    def unsafeAdd(that: PosInt): PosInt =
-        Refined.unsafeApply(p.value + that.value)
+  override def unsafeAdd(x: PosInt, y: PosInt): PosInt =
+    Refined.unsafeApply(x.value + y.value)
 
-    def add(that: PosInt): Option[PosInt] =
-        RefType.applyRef[PosInt](p.value + that.value).toOption
-
-  }
+  override def add(x: PosInt, y: PosInt): Option[PosInt] =
+    RefType.applyRef[PosInt](x.value + y.value).toOption
 
 }
 ```
@@ -1234,7 +1258,7 @@ exclude: true
 * Links to even more resources in [Refined wiki](https://github.com/fthomas/refined/wiki/Resources)
 
 ---
-exlude: true
+exclude: true
 class: center, middle
 
 .image-half[![Static typing](./degoes_tweet.png)]

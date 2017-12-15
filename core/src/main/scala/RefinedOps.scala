@@ -4,19 +4,28 @@ import eu.timepit.refined.types.string._
 
 object RefinedOps {
 
-  implicit class NonEmptyStringOps(val s: NonEmptyString) {
-
-    def append(o: NonEmptyString): NonEmptyString = Refined.unsafeApply(s.value + o.value)
-
+  trait RefinedStringOps[T] {
+    def concat(t1: T, t2: T): T
   }
 
-  implicit class PosIntOps(val p: PosInt) {
+  implicit val refinedNonEmptyStringOps = new RefinedStringOps[NonEmptyString] {
+    override def concat(t1: NonEmptyString, t2: NonEmptyString): NonEmptyString =
+      Refined.unsafeApply(t1.value + t2.value)
+  }
 
-    def minus(that: PosInt): Option[PosInt] = RefType.applyRef[PosInt](p.value - that.value).toOption
+  trait RefinedIntOps[T] {
+    def unsafeAdd(t1: T, t2: T): T
+    def add(t1: T, t2: T): Option[T]
+  }
 
-    def add(that: PosInt): Option[PosInt] = RefType.applyRef[PosInt](p.value + that.value).toOption
+  implicit val refinedPosIntOps = new RefinedIntOps[PosInt] {
 
-    def unsafeAdd(that: PosInt): PosInt = Refined.unsafeApply(p.value + that.value)
+    override def unsafeAdd(x: PosInt, y: PosInt): PosInt =
+      Refined.unsafeApply(x.value + y.value)
+
+
+    override def add(x: PosInt, y: PosInt): Option[PosInt] =
+      RefType.applyRef[PosInt](x.value + y.value).toOption
 
   }
 

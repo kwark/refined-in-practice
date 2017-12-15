@@ -13,21 +13,15 @@ class RefinedOpsTest extends FunSuite with Matchers with PropertyChecks {
 
   test("NonEmptyString append") {
     forAll { (s1: NonEmptyString, s2: NonEmptyString) =>
-      s1.append(s2).value.nonEmpty shouldBe true
-    }
-  }
-
-  test("PosInt minus") {
-    forAll { (i1: PosInt, i2: PosInt) =>
-      val result: Option[numeric.PosInt] = i1.minus(i2)
-      if (i2.value >= i1.value) result.isEmpty shouldBe true
-      else result.nonEmpty shouldBe true
+      val ev = implicitly[RefinedStringOps[NonEmptyString]]
+      ev.concat(s1, s2).value.nonEmpty shouldBe true
     }
   }
 
   test("PosInt add") {
     forAll { (i1: PosInt, i2: PosInt) =>
-      val result: Option[numeric.PosInt] = i1.add(i2)
+      val ev = implicitly[RefinedIntOps[PosInt]]
+      val result: Option[numeric.PosInt] = ev.add(i1, i2)
       if (i2.value + i1.value > 0) result.nonEmpty shouldBe true
       else result.isEmpty shouldBe true
     }
@@ -35,8 +29,9 @@ class RefinedOpsTest extends FunSuite with Matchers with PropertyChecks {
 
   test("PosInt unsafeAdd") {
     forAll { (i1: PosInt, i2: PosInt) =>
-        // This test fails sometimes, because of int overflow
-//      i1.unsafeAdd(i2).value should be > 0
+      val ev = implicitly[RefinedIntOps[PosInt]]
+      // This test fails sometimes, because of int overflow
+      // ev.unsafeAdd(i1, i2) .value should be > 0
     }
   }
 

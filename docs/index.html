@@ -876,26 +876,33 @@ This can be just a number of connection parameters but in most cases it includes
 --
 However slick queries are still a problem!
 
+`SELECT * FROM developers WHERE twitter like '%k%';`
+
 ```scala
-db.run(developers.filter(_.twitter.like("%kwa%")).result)
+db.run(developers.filter(_.twitter.like("%k%")).result)
 
 [error] value like is not a member of slick.lifted.Rep[improved.TwitterHandle]
 [error]     db.run(developers.filter(_.twitter.like("%kwa%")).result)
 ```
+???
 
-Sigh! We might just as well give-up and go back using unrefined types
+We want to find all developers with a twitter username containing the letter k
+
+We use slick's collection like DSL
+
+Unfortunately this does not compile out of the box
+
 --
 
+Convince the compiler that `twitter` is actually a `Rep[String]`
+
 ```scala
-db.run(developers.filter(_.twitter.asInstanceOf[Rep[String]].like("%kwa%")).result)
+db.run(developers.filter(_.twitter.asInstanceOf[Rep[String]].like("%k%")).result)
 ```
 
 
 ---
 # Integration library for Refined and Slick
-
-* avoids boilerplate
-* avoids `asInstanceOf[Rep[xxx]]`
 
 ```scala
 libraryDependencies += "be.venneborg" %% "slick-refined" % "0.1.0"
@@ -930,7 +937,9 @@ object MyRefinedSlickProfile extends MyRefinedSlickProfile
 ```
 ???
 We need to extend the default H2Profile
+
 If you ever worked with slick-pg, extension library for Slick and postgres
+
 https://github.com/scala/bug/issues/10477
 
 ---
@@ -996,6 +1005,7 @@ Json.toJson(Developer("Peter Mortier", "@kwarkk"))
 ```
 
 ???
+We are going to ask play to automaticall derive a Json formatter for our Developer class
 
 Play uses a macro to inspect the Developer case class
 
@@ -1030,6 +1040,9 @@ implicit val twitterHandleFormat = new Format[TwitterHandle] {
 
 }
 ```
+???
+create a new Format and implement two methods
+
 --
 * Reasonably easy code to understand/write
 
@@ -1079,7 +1092,7 @@ libraryDependencies += "be.venneborg" %% "play26-refined" % "0.1.0"
 
 * boilerplate-free form binding/unbinding for refined types
 
-* Path/Query binding for refined types:<br/>
+* Path/Query binding for refined types in `routes`:<br/>
     `/developers/:handle => controller.lookup(handle)`
 
 * Translation of Refined error messages to standard Play error codes
@@ -1120,39 +1133,43 @@ Uniform validation across json/forms
 ---
 # Extension methods
 
-* What if I need to perform operations on Refined types?
+* What if you need to perform operations on Refined types?
 
 --
-* Use '<del>Pimp</del>/Bedazzle my library' pattern to decorate types/classes with additional methods
+* Use Typeclass pattern
+
+---
 
 ```scala
 import eu.timepit.refined.types.string._
 
-object RefinedStringOps {
+trait RefinedStringOps[T] {
+  def concat(x: T, y: T): T
+}
 
-  implicit class NonEmptyStringOps(val s: NonEmptyString) {
-    def concat(that: NonEmptyString): NonEmptyString =
-        Refined.unsafeApply(s.value.concat(that.value))
-  }
+implicit val refinedNonEmptyStringOps = new RefinedStringOps[NonEmptyString] {
+
+  override def concat(x: NonEmptyString, y: NonEmptyString): NonEmptyString =
+    Refined.unsafeApply(x.value + y.value)
 
 }
 ```
-
---
+---
 ```scala
 import eu.timepit.refined.types.numeric._
 
-object RefinedIntOps {
+trait RefinedIntOps[T] {
+  def unsafeAdd(t1: T, t2: T): T
+  def add(t1: T, t2: T): Option[T]
+}
 
-  implicit class PosIntOps(val p: PosInt) {
+implicit val refinedPosIntOps = new RefinedIntOps[PosInt] {
 
-    def unsafeAdd(that: PosInt): PosInt =
-        Refined.unsafeApply(p.value + that.value)
+  override def unsafeAdd(x: PosInt, y: PosInt): PosInt =
+    Refined.unsafeApply(x.value + y.value)
 
-    def add(that: PosInt): Option[PosInt] =
-        RefType.applyRef[PosInt](p.value + that.value).toOption
-
-  }
+  override def add(x: PosInt, y: PosInt): Option[PosInt] =
+    RefType.applyRef[PosInt](x.value + y.value).toOption
 
 }
 ```
