@@ -547,8 +547,8 @@ Using **Refined type**
 
 |                |                                  |
 | -------------  | ---------------                  |
-| compile time   | `eu.timepit.refined.api.RefType.applyRefM[RT]` |
-| runtime        | `eu.timepit.refined.api.RefType.applyRef[RT]`  |
+| compile time   | `eu.timepit.refined.api.RefType.applyRefM[RT]: RT` |
+| runtime        | `eu.timepit.refined.api.RefType.applyRef[RT]: Either[String, RT]`  |
 
 ---
 class: center, middle
@@ -822,6 +822,15 @@ implicit val twitterMapping = MappedColumnType.base[TwitterHandle, String](
 ```
 
 `Refined.unsafeApply` is an escape hatch!
+???
+
+Let's fix that with a custom Slick mapping
+
+That is a way to tell slick how to convert between a Refined type and its base type and vice versa
+
+We call the base method on MappedColumnType with two type parameters
+
+and we need to provide two functions
 
 --
 
